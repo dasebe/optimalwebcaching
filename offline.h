@@ -27,7 +27,7 @@ uint64_t parseTraceFile(std::vector<std::tuple<uint64_t,uint64_t,bool> > & trace
     return uniqc;
 }
                     
-void createMCF(SmartDigraph & g, std::vector<std::tuple<uint64_t,uint64_t,bool> > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int> & supplies) {
+void createMCF(SmartDigraph & g, std::vector<std::tuple<uint64_t,uint64_t,bool> > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies) {
 
     // init
     std::map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;

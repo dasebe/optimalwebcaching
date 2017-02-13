@@ -13,9 +13,9 @@ TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
     REQUIRE(trace.size()==4);
 
     SmartDigraph g; // mcf graph
-    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
-    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
+    SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
     uint64_t cacheSize = 2;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 
@@ -26,7 +26,7 @@ TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
         arcMap("cost", cost).          // write 'cost' for for arcs
         run();
 
-    int nodes=0, vertices=0, supplysum=0;
+    uint64_t nodes=0, vertices=0, supplysum=0;
     for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) {
         ++nodes;
         supplysum+=supplies[n];
@@ -61,9 +61,9 @@ TEST_CASE( "test trace 2: larger MCF graph","[trace2]") {
     REQUIRE(trace.size()==8);
 
     SmartDigraph g; // mcf graph
-    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
-    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
+    SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
     uint64_t cacheSize = 10;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 
@@ -74,7 +74,7 @@ TEST_CASE( "test trace 2: larger MCF graph","[trace2]") {
         arcMap("cost", cost).          // write 'cost' for for arcs
         run();
 
-    int nodes=0, vertices=0, supplysum=0;
+    uint64_t nodes=0, vertices=0, supplysum=0;
     for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) {
         ++nodes;
         supplysum+=supplies[n];
@@ -126,9 +126,9 @@ TEST_CASE( "test trace 3: MCF graph with id/size inconsistency","[trace3]") {
     REQUIRE(trace.size()==15);
 
     SmartDigraph g; // mcf graph
-    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
-    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
+    SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
     uint64_t cacheSize = 2;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 
@@ -139,7 +139,7 @@ TEST_CASE( "test trace 3: MCF graph with id/size inconsistency","[trace3]") {
         arcMap("cost", cost).          // write 'cost' for for arcs
         run();
 
-    int nodes=0, vertices=0, supplysum=0;
+    uint64_t nodes=0, vertices=0, supplysum=0;
     for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) {
         ++nodes;
         supplysum+=supplies[n];
@@ -158,8 +158,8 @@ TEST_CASE( "test trace 3: MCF graph with id/size inconsistency","[trace3]") {
         REQUIRE(cost[g.arcFromId(it)]==0);
     }
 
-    REQUIRE(cap[g.arcFromId(1)]==2);
-    REQUIRE(cost[g.arcFromId(1)]==1/2.0);
+    REQUIRE(cap[g.arcFromId(1)]==4294967297);
+    REQUIRE(cost[g.arcFromId(1)]==1/4294967297.0);
     REQUIRE(cap[g.arcFromId(3)]==1);
     REQUIRE(cost[g.arcFromId(3)]==1/1.0);
 }

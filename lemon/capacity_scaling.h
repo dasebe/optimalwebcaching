@@ -31,6 +31,26 @@
 
 namespace lemon {
 
+
+  /// \brief Problem type constants for the \c run() function.
+  ///
+  /// Enum type containing the problem type constants that can be
+  /// returned by the \ref run() function of the algorithm.
+  enum ProblemType {
+  /// The problem has no feasible solution (flow).
+  INFEASIBLE,
+  /// The problem has optimal solution (i.e. it is feasible and
+  /// bounded), and the algorithm has found optimal flow and node
+  /// potentials (primal and dual solutions).
+  OPTIMAL,
+  /// The digraph contains an arc of negative cost and infinite
+  /// upper bound. It means that the objective function is unbounded
+  /// on that arc, however, note that it could actually be bounded
+  /// over the feasible flows, but this algroithm cannot handle
+  /// these cases.
+  UNBOUNDED
+  };
+
   /// \brief Default traits class of CapacityScaling algorithm.
   ///
   /// Default traits class of CapacityScaling algorithm.
@@ -121,27 +141,6 @@ namespace lemon {
     /// \brief The \ref lemon::CapacityScalingDefaultTraits "traits class"
     /// of the algorithm
     typedef TR Traits;
-
-  public:
-
-    /// \brief Problem type constants for the \c run() function.
-    ///
-    /// Enum type containing the problem type constants that can be
-    /// returned by the \ref run() function of the algorithm.
-    enum ProblemType {
-      /// The problem has no feasible solution (flow).
-      INFEASIBLE,
-      /// The problem has optimal solution (i.e. it is feasible and
-      /// bounded), and the algorithm has found optimal flow and node
-      /// potentials (primal and dual solutions).
-      OPTIMAL,
-      /// The digraph contains an arc of negative cost and infinite
-      /// upper bound. It means that the objective function is unbounded
-      /// on that arc, however, note that it could actually be bounded
-      /// over the feasible flows, but this algroithm cannot handle
-      /// these cases.
-      UNBOUNDED
-    };
 
   private:
 
