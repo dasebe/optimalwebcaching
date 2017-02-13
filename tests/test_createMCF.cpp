@@ -6,7 +6,7 @@
 
 TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
 
-    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    std::vector<traceEntry> trace;
     std::string path("test1.tr");
     uint64_t uniqc = parseTraceFile(trace, path);
     REQUIRE(uniqc==2);
@@ -16,6 +16,7 @@ TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
     SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
     SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
+
     uint64_t cacheSize = 2;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 
@@ -54,7 +55,7 @@ TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
 
 TEST_CASE( "test trace 2: larger MCF graph","[trace2]") {
 
-    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    std::vector<traceEntry> trace;
     std::string path("test2.tr");
     uint64_t uniqc = parseTraceFile(trace, path);
     REQUIRE(uniqc==3);
@@ -64,6 +65,7 @@ TEST_CASE( "test trace 2: larger MCF graph","[trace2]") {
     SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
     SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
+
     uint64_t cacheSize = 10;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 
@@ -119,7 +121,7 @@ TEST_CASE( "test trace 2: larger MCF graph","[trace2]") {
 
 TEST_CASE( "test trace 3: MCF graph with id/size inconsistency","[trace3]") {
 
-    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    std::vector<traceEntry> trace;
     std::string path("test3.tr");
     uint64_t uniqc = parseTraceFile(trace, path);
     REQUIRE(uniqc==13); //12 ids and one size inconsistency
@@ -129,6 +131,7 @@ TEST_CASE( "test trace 3: MCF graph with id/size inconsistency","[trace3]") {
     SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
     SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
+
     uint64_t cacheSize = 2;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 

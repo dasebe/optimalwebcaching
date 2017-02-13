@@ -1,4 +1,4 @@
-TARGET = main
+TARGET = offline
 OBJS += offline.o
 
 CXX = g++ #clang++ #OSX
