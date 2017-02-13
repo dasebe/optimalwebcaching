@@ -11,7 +11,9 @@ int main(int argc, char* argv[]) {
 
     // parse trace file
     std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
-    parseTraceFile(trace, path);
+    uint64_t totalUniqC = parseTraceFile(trace, path);
+    uint64_t totalReqc = trace.size();
+    std::cout << "scanned trace n=" << totalReqc << " m= " << totalUniqC << std::endl;
 
     // create mcf instance
     SmartDigraph g; // mcf graph
@@ -22,18 +24,26 @@ int main(int argc, char* argv[]) {
     trace.clear();
     
     std::cout << "created graph with ";
-
     int nodes=0, vertices=0;
     for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) ++nodes;
     std::cout << nodes << " nodes ";
-    
     for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) ++vertices;
-    std::cout << vertices << " arcs ";
+    std::cout << vertices << " arcs " << std::endl;
 
-    digraphWriter(g, std::cout).
-        arcMap("capacity", cap).       // write cap into 'capacity'
-        arcMap("cost", cost).          // write 'cost' for for arcs
-        run();
+    // solve the mcf instance
+    CapacityScaling<SmartDigraph, int, double, CapacityScalingDefaultTraits<SmartDigraph, int, double>> cs(g);
+    cs.upperMap(cap).costMap(cost).supplyMap(supplies).run();
+    std::cout << "Total cost: " << cs.totalCost<double>() << " Total Reqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(cs.totalCost<double>())+totalUniqC)/totalReqc << std::endl;
+
+    SmartDigraph::ArcMap<int> flow(g);
+    cs.flowMap(flow);
+
+    // digraphWriter(g).
+    //     arcMap("capacity", cap).
+    //     arcMap("cost", cost).
+    //     arcMap("flow", flow).
+    //     run();
+
     
     return 0;
 }

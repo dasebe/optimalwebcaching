@@ -4,11 +4,60 @@
 #include "catch.hpp"
 #include "../offline.h"
 
-TEST_CASE( "MCF create function", "[offline]" ) {
+TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
 
     std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
-    std::string path("test.tr");
-    parseTraceFile(trace, path);
+    std::string path("test1.tr");
+    uint64_t uniqc = parseTraceFile(trace, path);
+    REQUIRE(uniqc==2);
+    REQUIRE(trace.size()==4);
+
+    SmartDigraph g; // mcf graph
+    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<double> cost(g); // mcf costs
+    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
+    uint64_t cacheSize = 2;
+    createMCF(g, trace, cacheSize, cap, cost, supplies);
+
+    std::cout << "---------test1 graph--------" << std::endl;
+    digraphWriter(g, std::cout).
+        nodeMap("supplies", supplies).
+        arcMap("capacity", cap).       // write cap into 'capacity'
+        arcMap("cost", cost).          // write 'cost' for for arcs
+        run();
+
+    int nodes=0, vertices=0, supplysum=0;
+    for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) {
+        ++nodes;
+        supplysum+=supplies[n];
+    }
+    REQUIRE(nodes==3);
+    REQUIRE(supplysum==0);
+    
+    for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) {
+        ++vertices;
+    }
+    REQUIRE(vertices==4);
+    
+    std::list<uint64_t> cl {0, 2};
+    for(auto it: cl) {
+        REQUIRE(cap[g.arcFromId(it)]==2);
+        REQUIRE(cost[g.arcFromId(it)]==0);
+    }
+
+    REQUIRE(cap[g.arcFromId(1)]==2);
+    REQUIRE(cost[g.arcFromId(1)]==1/2.0);
+    REQUIRE(cap[g.arcFromId(3)]==3);
+    REQUIRE(cost[g.arcFromId(3)]==1/3.0);
+}
+
+
+TEST_CASE( "test trace 2: larger MCF graph","[trace2]") {
+
+    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    std::string path("test2.tr");
+    uint64_t uniqc = parseTraceFile(trace, path);
+    REQUIRE(uniqc==3);
     REQUIRE(trace.size()==8);
 
     SmartDigraph g; // mcf graph
@@ -18,6 +67,7 @@ TEST_CASE( "MCF create function", "[offline]" ) {
     uint64_t cacheSize = 10;
     createMCF(g, trace, cacheSize, cap, cost, supplies);
 
+    std::cout << "---------test2 graph--------" << std::endl;
     digraphWriter(g, std::cout).
         nodeMap("supplies", supplies).
         arcMap("capacity", cap).       // write cap into 'capacity'
@@ -52,13 +102,64 @@ TEST_CASE( "MCF create function", "[offline]" ) {
         REQUIRE(cap[g.arcFromId(it)]==10);
         REQUIRE(cost[g.arcFromId(it)]==0);
     }
-    std::list<uint64_t> id1 {2, 5, 7};
+    std::list<uint64_t> id1 {2, 5, 8};
     for(auto it: id1) {
         REQUIRE(cap[g.arcFromId(it)]==2);
         REQUIRE(cost[g.arcFromId(it)]==1/2.0);
     }
-    REQUIRE(cap[g.arcFromId(8)]==3);
-    REQUIRE(cost[g.arcFromId(8)]==1/3.0);
+    REQUIRE(cap[g.arcFromId(7)]==3);
+    REQUIRE(cost[g.arcFromId(7)]==1/3.0);
     REQUIRE(cap[g.arcFromId(9)]==4);
     REQUIRE(cost[g.arcFromId(9)]==1/4.0);
+}
+
+
+
+
+
+TEST_CASE( "test trace 3: MCF graph with id/size inconsistency","[trace3]") {
+
+    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    std::string path("test3.tr");
+    uint64_t uniqc = parseTraceFile(trace, path);
+    REQUIRE(uniqc==13); //12 ids and one size inconsistency
+    REQUIRE(trace.size()==15);
+
+    SmartDigraph g; // mcf graph
+    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<double> cost(g); // mcf costs
+    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
+    uint64_t cacheSize = 2;
+    createMCF(g, trace, cacheSize, cap, cost, supplies);
+
+    std::cout << "---------test3 graph--------" << std::endl;
+    digraphWriter(g, std::cout).
+        nodeMap("supplies", supplies).
+        arcMap("capacity", cap).       // write cap into 'capacity'
+        arcMap("cost", cost).          // write 'cost' for for arcs
+        run();
+
+    int nodes=0, vertices=0, supplysum=0;
+    for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) {
+        ++nodes;
+        supplysum+=supplies[n];
+    }
+    REQUIRE(nodes==3);
+    REQUIRE(supplysum==0);
+    
+    for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) {
+        ++vertices;
+    }
+    REQUIRE(vertices==4);
+    
+    std::list<uint64_t> cl {0, 2};
+    for(auto it: cl) {
+        REQUIRE(cap[g.arcFromId(it)]==2);
+        REQUIRE(cost[g.arcFromId(it)]==0);
+    }
+
+    REQUIRE(cap[g.arcFromId(1)]==2);
+    REQUIRE(cost[g.arcFromId(1)]==1/2.0);
+    REQUIRE(cap[g.arcFromId(3)]==1);
+    REQUIRE(cost[g.arcFromId(3)]==1/1.0);
 }
