@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -10,44 +11,17 @@
 
 using namespace lemon;
 
-int main(int argc, char* argv[]) {
+void createMCF(SmartDigraph & g, std::vector<std::tuple<uint64_t,uint64_t,bool> > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int> & supplies) {
 
-    std::string path(argv[1]);
-    uint64_t cacheSize(atoll(argv[2]));
-    std::ifstream traceFile(path);
-
-    uint64_t t, id, size, reqc=0, uniqc=0;
-    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    // init
     std::unordered_map<uint64_t, uint64_t> lastSeen;
-
-    while(traceFile >> t >> id >> size) {
-        if(lastSeen.count(id)>0) {
-            std::get<2>(trace[lastSeen[id]]) = true;
-        } else {
-            uniqc++;
-        }
-        trace.emplace_back(id,size,false);
-        lastSeen[id]=reqc++;
-    }
-    traceFile.close();
-
-    std::cout << "scanned trace n=" << reqc << " m= " << uniqc << std::endl;
-
-    SmartDigraph g;
-    g.reserveNode(reqc-uniqc+1);
-    // TODO: FORGOT THE END ARCS
-    g.reserveArc(2*(reqc-uniqc));
-
-    lastSeen.clear();
-    reqc=0;
+    uint64_t reqc=0;
     SmartDigraph::Arc curArc;
     SmartDigraph::Node curNode = g.addNode(); // initial node
     SmartDigraph::Node prevNode;
-    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
-    SmartDigraph::ArcMap<double> cost(g); // mcf costs
-    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
     std::unordered_map<uint64_t, uint64_t> lastSize;
 
+    // iterate over trace
     for(auto it: trace) {
         // only consider requests that reoccur
         // should we delete if does not reoccur?
@@ -65,7 +39,7 @@ int main(int argc, char* argv[]) {
                     supplies[curNode] -= size;
                 } else {
                     std::cerr << "fuckup" << std::endl;
-                    return 1;
+                    assert(false);
                 }
             }
             // create capacity arc ("inner")
@@ -92,26 +66,54 @@ int main(int argc, char* argv[]) {
         supplies[lastReq] += size;
         supplies[curNode] -= size;
     }
+}    
 
-    std::cout << "created graph" << std::endl;
+int main(int argc, char* argv[]) {
 
-    // int nodes=0;
-    // for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) ++nodes;
-    // std::cout << nodes " nodes ";
+    std::string path(argv[1]);
+    uint64_t cacheSize(atoll(argv[2]));
+    std::ifstream traceFile(path);
+
+    uint64_t t, id, size, reqc=0, uniqc=0;
+    std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
+    std::unordered_map<uint64_t, uint64_t> lastSeen;
+
+    while(traceFile >> t >> id >> size) {
+        if(lastSeen.count(id)>0) {
+            std::get<2>(trace[lastSeen[id]]) = true;
+        } else {
+            uniqc++;
+        }
+        trace.emplace_back(id,size,false);
+        lastSeen[id]=reqc++;
+    }
+    traceFile.close();
+    lastSeen.clear();
+
+    std::cout << "scanned trace n=" << reqc << " m= " << uniqc << std::endl;
+
+    SmartDigraph g; // mcf graph
+    g.reserveNode(reqc-uniqc+1);
+    g.reserveArc(2*(reqc-uniqc));
+    SmartDigraph::ArcMap<int> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<double> cost(g); // mcf costs
+    SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
+    createMCF(g, trace, cacheSize, cap, cost, supplies);
+    trace.clear();
     
-    // for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) {
-    //     std::cout << "cost " << cost[a] << std::endl;
-    // }
+    std::cout << "created graph with ";
+
+    int nodes=0, vertices=0;
+    for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) ++nodes;
+    std::cout << nodes << " nodes ";
+    
+    for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) ++vertices;
+    std::cout << vertices << " arcs ";
 
     digraphWriter(g, std::cout).
         arcMap("capacity", cap).       // write cap into 'capacity'
         arcMap("cost", cost).          // write 'cost' for for arcs
         run();
-
     
-    // for(auto it: trace) {
-    //     std::cout << std::get<0>(it) << " " << std::get<1>(it) << " " << std::get<2>(it) << " " << std::endl;
-    // }
-
     return 0;
 }
