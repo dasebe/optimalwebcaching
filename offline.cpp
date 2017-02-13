@@ -6,19 +6,20 @@ using namespace lemon;
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 3) {
-        std::cerr << argv[0] << " traceFile cacheSize" << std::endl;
+    if (argc != 4) {
+        std::cerr << argv[0] << " traceFile cacheSize CASscale" << std::endl;
         return 1;
     }
 
     std::string path(argv[1]);
     uint64_t cacheSize(atoll(argv[2]));
+    int scale(atoi(argv[3]));
 
     // parse trace file
     std::vector<traceEntry> trace;
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
-    std::cout << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
+    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
 
     // create mcf instance
     SmartDigraph g; // mcf graph
@@ -28,26 +29,26 @@ int main(int argc, char* argv[]) {
 
     createMCF(g, trace, cacheSize, cap, cost, supplies);
     
-    std::cout << "created graph with ";
+    std::cerr << "created graph with ";
     uint64_t nodes=0, vertices=0;
     for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) ++nodes;
-    std::cout << nodes << " nodes ";
+    std::cerr << nodes << " nodes ";
     for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) ++vertices;
-    std::cout << vertices << " arcs " << std::endl;
+    std::cerr << vertices << " arcs " << std::endl;
 
     // solve the mcf instance
     CapacityScaling<SmartDigraph, int64_t, double, CapacityScalingDefaultTraits<SmartDigraph, int64_t, double>> cs(g);
     cs.upperMap(cap).costMap(cost).supplyMap(supplies);
-    ProblemType res = cs.run();
+    ProblemType res = cs.run(scale);
     switch(res) {
         case INFEASIBLE:
-            std::cout << "infeasible mcf" << std::endl;
+            std::cerr << "infeasible mcf" << std::endl;
             break;
         case UNBOUNDED:
-            std::cout << "unbounded mcf" << std::endl;
+            std::cerr << "unbounded mcf" << std::endl;
             break;
         case OPTIMAL:
-            std::cout << "optimal solution: cost " << cs.totalCost<double>() << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(cs.totalCost<double>())+totalUniqC)/totalReqc << std::endl;
+            std::cerr << "optimal solution: cost " << cs.totalCost<double>() << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(cs.totalCost<double>())+totalUniqC)/totalReqc << " scale " << scale << std::endl;
 
             SmartDigraph::ArcMap<uint64_t> flow(g);
             cs.flowMap(flow);
