@@ -11,6 +11,23 @@
 
 using namespace lemon;
 
+void parseTraceFile(std::vector<std::tuple<uint64_t,uint64_t,bool> > & trace, std::string & path) {
+    std::ifstream traceFile(path);
+    uint64_t t, id, size, reqc=0, uniqc=0;
+    std::unordered_map<uint64_t, uint64_t> lastSeen;
+
+    while(traceFile >> t >> id >> size) {
+        if(lastSeen.count(id)>0) {
+            std::get<2>(trace[lastSeen[id]]) = true;
+        } else {
+            uniqc++;
+        }
+        trace.emplace_back(id,size,false);
+        lastSeen[id]=reqc++;
+    }
+    std::cout << "scanned trace n=" << reqc << " m= " << uniqc << std::endl;
+}
+                    
 void createMCF(SmartDigraph & g, std::vector<std::tuple<uint64_t,uint64_t,bool> > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int> & supplies) {
 
     // init
@@ -72,29 +89,13 @@ int main(int argc, char* argv[]) {
 
     std::string path(argv[1]);
     uint64_t cacheSize(atoll(argv[2]));
-    std::ifstream traceFile(path);
 
-    uint64_t t, id, size, reqc=0, uniqc=0;
+    // parse trace file
     std::vector<std::tuple<uint64_t,uint64_t,bool> > trace;
-    std::unordered_map<uint64_t, uint64_t> lastSeen;
+    parseTraceFile(trace, path);
 
-    while(traceFile >> t >> id >> size) {
-        if(lastSeen.count(id)>0) {
-            std::get<2>(trace[lastSeen[id]]) = true;
-        } else {
-            uniqc++;
-        }
-        trace.emplace_back(id,size,false);
-        lastSeen[id]=reqc++;
-    }
-    traceFile.close();
-    lastSeen.clear();
-
-    std::cout << "scanned trace n=" << reqc << " m= " << uniqc << std::endl;
-
+    // create mcf instance
     SmartDigraph g; // mcf graph
-    g.reserveNode(reqc-uniqc+1);
-    g.reserveArc(2*(reqc-uniqc));
     SmartDigraph::ArcMap<int> cap(g); // mcf capacities
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
     SmartDigraph::NodeMap<int> supplies(g); // mcf demands/supplies
