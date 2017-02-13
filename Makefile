@@ -7,6 +7,7 @@ CXXFLAGS += -MMD -MP # dependency tracking flags
 CXXFLAGS += -I.
 CXXFLAGS += -Wall -Werror 
 LDFLAGS += $(LIBS)
+all: CXXFLAGS += -O3 # release flags
 all:		$(TARGET)
 
 debug: CXXFLAGS += -ggdb  -D_GLIBCXX_DEBUG # debug flags
