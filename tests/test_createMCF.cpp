@@ -52,13 +52,13 @@ TEST_CASE( "MCF create function", "[offline]" ) {
         REQUIRE(cap[g.arcFromId(it)]==10);
         REQUIRE(cost[g.arcFromId(it)]==0);
     }
-    std::list<uint64_t> id1 {2, 5, 9};
+    std::list<uint64_t> id1 {2, 5, 7};
     for(auto it: id1) {
         REQUIRE(cap[g.arcFromId(it)]==2);
         REQUIRE(cost[g.arcFromId(it)]==1/2.0);
     }
-    REQUIRE(cap[g.arcFromId(7)]==4);
-    REQUIRE(cost[g.arcFromId(7)]==1/4.0);
     REQUIRE(cap[g.arcFromId(8)]==3);
     REQUIRE(cost[g.arcFromId(8)]==1/3.0);
+    REQUIRE(cap[g.arcFromId(9)]==4);
+    REQUIRE(cost[g.arcFromId(9)]==1/4.0);
 }
