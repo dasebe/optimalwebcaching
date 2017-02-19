@@ -1,2 +1,8 @@
 *.d
 *.o
+*.log
+*.txt
+*.tr
+*.csv
+*.result
+*.sh
