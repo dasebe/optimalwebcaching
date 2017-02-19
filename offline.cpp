@@ -1,8 +1,17 @@
 #include <lemon/lgf_writer.h>
+#include <lemon/network_simplex.h>
 #include <lemon/capacity_scaling.h>
 #include "offline.h"
 
 using namespace lemon;
+
+#ifdef NETWORKSIMPLEX
+typedef NetworkSimplex<SmartDigraph, int64_t, double> SolverType;
+#else
+typedef CapacityScaling<SmartDigraph, int64_t, double, CapacityScalingDefaultTraits<SmartDigraph, int64_t, double> > SolverType;
+#endif
+
+// missing scale etc
 
 int main(int argc, char* argv[]) {
 
@@ -37,37 +46,54 @@ int main(int argc, char* argv[]) {
     std::cerr << vertices << " arcs " << std::endl;
 
     // solve the mcf instance
-    CapacityScaling<SmartDigraph, int64_t, double, CapacityScalingDefaultTraits<SmartDigraph, int64_t, double>> cs(g);
-    cs.upperMap(cap).costMap(cost).supplyMap(supplies);
-    ProblemType res = cs.run(scale);
-    switch(res) {
-        case INFEASIBLE:
-            std::cerr << "infeasible mcf" << std::endl;
-            break;
-        case UNBOUNDED:
-            std::cerr << "unbounded mcf" << std::endl;
-            break;
-        case OPTIMAL:
-            std::cerr << "optimal solution: cost " << cs.totalCost<double>() << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(cs.totalCost<double>())+totalUniqC)/totalReqc << " scale " << scale << std::endl;
+    SolverType solver(g);
+    solver.upperMap(cap).costMap(cost).supplyMap(supplies);
 
-            SmartDigraph::ArcMap<uint64_t> flow(g);
-            cs.flowMap(flow);
-            for(auto & it: trace) {
-                const uint64_t id=std::get<0>(it);
-                const uint64_t size=std::get<1>(it);
-                const uint64_t time=std::get<3>(it);
-                const int arcId=std::get<4>(it);
-                std::cout << time << " " << id << " " << size << " ";
-                if(arcId==-1) 
-                    std::cout << "0\n";
-                else
-                    std::cout << (size-flow[g.arcFromId(arcId)])/static_cast<double>(size) << "\n";
-            }
-
+    SolverType::ProblemType res;
+#ifdef NETWORKSIMPLEX
+    switch(scale) {
+        case 1: res = solver.run(SolverType::FIRST_ELIGIBLE);
+            std::cerr << "solver: NetworkSimplex FE ";
+            break;
+        case 2: res = solver.run(SolverType::BEST_ELIGIBLE);
+            std::cerr << "solver: NetworkSimplex BE ";
+            break;
+        case 4: res = solver.run(SolverType::CANDIDATE_LIST);
+            std::cerr << "solver: NetworkSimplex CL ";
+            break;
+        default: res = solver.run(SolverType::BLOCK_SEARCH);
+            std::cerr << "solver: NetworkSimplex BS ";
             break;
     }
-    // todo: check other capacity scaling factors, factor=1 disables scaling
+#else
+    res = solver.run(scale);
+    std::cerr << "solver: CapacityScaling S" << scale << " ";
+#endif
 
+
+    if(res==SolverType::INFEASIBLE) {
+        std::cerr << "infeasible mcf" << std::endl;
+        return -1;
+    } else if (res==SolverType::UNBOUNDED) {
+        std::cerr << "unbounded mcf" << std::endl;
+        return -1;
+    }
+
+    std::cerr << "optimal solution: cost " << solver.totalCost<double>() << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solver.totalCost<double>())+totalUniqC)/totalReqc << std::endl;
+    
+    SmartDigraph::ArcMap<uint64_t> flow(g);
+    solver.flowMap(flow);
+    for(auto & it: trace) {
+        const uint64_t id=std::get<0>(it);
+        const uint64_t size=std::get<1>(it);
+        const uint64_t time=std::get<3>(it);
+        const int arcId=std::get<4>(it);
+        std::cout << time << " " << id << " " << size << " ";
+        if(arcId==-1) 
+            std::cout << "0\n";
+        else
+            std::cout << (size-flow[g.arcFromId(arcId)])/static_cast<double>(size) << "\n";
+    }
 
 
     return 0;
