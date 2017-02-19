@@ -52,7 +52,6 @@ int main(int argc, char* argv[]) {
 
             SmartDigraph::ArcMap<uint64_t> flow(g);
             cs.flowMap(flow);
-            std::cout << "t id size x\n";
             for(auto & it: trace) {
                 const uint64_t id=std::get<0>(it);
                 const uint64_t size=std::get<1>(it);
