@@ -1,5 +1,6 @@
 TARGET = runtests
 OBJS += test_createMCF.o
+OBJS += ../lib/parse_trace.o
 OBJS += main.o
 
 CXX = g++ #clang++ #OSX

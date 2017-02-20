@@ -2,7 +2,7 @@
 #include <list>
 #include <lemon/lgf_writer.h>
 #include "catch.hpp"
-#include "../offline.h"
+#include "../lib/parse_trace.h"
 
 TEST_CASE( "test trace 1: basic MCF graph","[trace1]") {
 

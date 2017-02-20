@@ -1,20 +1,22 @@
+#include <fstream>
 #include <lemon/lgf_writer.h>
 #include <cassert>
-#include "parse_trace.h"
-#include "solve_mcf.h"
+#include "../lib/parse_trace.h"
+#include "../lib/solve_mcf.h"
 
 using namespace lemon;
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 4) {
-        std::cerr << argv[0] << " traceFile cacheSize solverParam" << std::endl;
+    if (argc != 5) {
+        std::cerr << argv[0] << " traceFile cacheSize solverParam resultPath" << std::endl;
         return 1;
     }
 
     std::string path(argv[1]);
     uint64_t cacheSize(atoll(argv[2]));
     int solverPar(atoi(argv[3]));
+    std::string resultPath(argv[4]);
 
     // parse trace file
     std::vector<traceEntry> trace;
@@ -39,20 +41,23 @@ int main(int argc, char* argv[]) {
 
     SmartDigraph::ArcMap<uint64_t> flow(g);
     double solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
-    assert(solval>0);
+    //    assert(solval>0);
 
     std::cerr << "solution par " << solverPar << " cost " << solval << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
+    std::cout << "solution par " << solverPar << " cost " << solval << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
     
+    std::ofstream resultfile(resultPath);
+
     for(auto & it: trace) {
         const uint64_t id=std::get<0>(it);
         const uint64_t size=std::get<1>(it);
         const uint64_t time=std::get<3>(it);
         const int arcId=std::get<4>(it);
-        std::cout << time << " " << id << " " << size << " ";
+        resultfile << time << " " << id << " " << size << " ";
         if(arcId==-1) 
-            std::cout << "0\n";
+            resultfile << "0\n";
         else
-            std::cout << (size-flow[g.arcFromId(arcId)])/static_cast<double>(size) << "\n";
+            resultfile << (size-flow[g.arcFromId(arcId)])/static_cast<double>(size) << "\n";
     }
 
 
