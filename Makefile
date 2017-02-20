@@ -1,7 +1,7 @@
-TARGET = offline
+TARGET = exact
 OBJS += parse_trace.o
 OBJS += solve_mcf.o
-OBJS += offline.o
+OBJS += exact_main.o
 
 CXX = g++ #clang++ #OSX
 CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
