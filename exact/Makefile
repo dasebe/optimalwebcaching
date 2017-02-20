@@ -1,12 +1,12 @@
 TARGET = exact
-OBJS += parse_trace.o
-OBJS += solve_mcf.o
-OBJS += exact_main.o
+OBJS += ../lib/parse_trace.o
+OBJS += ../lib/solve_mcf.o
+OBJS += ../exact/exact_main.o
 
 CXX = g++ #clang++ #OSX
 CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
 CXXFLAGS += -MMD -MP # dependency tracking flags
-CXXFLAGS += -I.
+CXXFLAGS += -I..
 CXXFLAGS += -O3 -ffast-math -march=native # aggressive optimization settings
 CXXFLAGS += -Wall -Werror 
 LDFLAGS += $(LIBS)
