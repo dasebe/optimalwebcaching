@@ -5,6 +5,9 @@
 
 using namespace lemon;
 
+// comment next line to use CapacityScaling solver
+#define NETWORKSIMPLEX
+
 #ifdef NETWORKSIMPLEX
 typedef NetworkSimplex<SmartDigraph, int64_t, double> SolverType;
 #else
@@ -16,7 +19,7 @@ typedef CapacityScaling<SmartDigraph, int64_t, double, CapacityScalingDefaultTra
 int main(int argc, char* argv[]) {
 
     if (argc != 4) {
-        std::cerr << argv[0] << " traceFile cacheSize CASscale" << std::endl;
+        std::cerr << argv[0] << " traceFile cacheSize solverParam" << std::endl;
         return 1;
     }
 
@@ -61,10 +64,13 @@ int main(int argc, char* argv[]) {
         case 4: res = solver.run(SolverType::CANDIDATE_LIST);
             std::cerr << "solver: NetworkSimplex CL ";
             break;
+        case 8: res = solver.run(SolverType::ALTERING_LIST);
+            std::cerr << "solver: NetworkSimplex AL ";
+            break;
         default: res = solver.run(SolverType::BLOCK_SEARCH);
             std::cerr << "solver: NetworkSimplex BS ";
             break;
-    }
+     }
 #else
     res = solver.run(scale);
     std::cerr << "solver: CapacityScaling S" << scale << " ";
