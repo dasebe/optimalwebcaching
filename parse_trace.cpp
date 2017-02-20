@@ -1,16 +1,11 @@
-#include <iostream>
-#include <cassert>
+//#include <iostream>
 #include <fstream>
-#include <string>
-#include <vector>
 #include <map>
 #include <unordered_map>
 #include <tuple>
-#include <lemon/smart_graph.h>
+#include "parse_trace.h"
 
 using namespace lemon;
-
-typedef std::tuple<uint64_t,uint64_t,bool,uint64_t,int> traceEntry; //id, size, hasNext, time, arcId
 
 uint64_t parseTraceFile(std::vector<traceEntry> & trace, std::string & path) {
     std::ifstream traceFile(path);

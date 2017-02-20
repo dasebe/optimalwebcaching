@@ -1,4 +1,6 @@
 TARGET = offline
+OBJS += parse_trace.o
+OBJS += solve_mcf.o
 OBJS += offline.o
 
 CXX = g++ #clang++ #OSX

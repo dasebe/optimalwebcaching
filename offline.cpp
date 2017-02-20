@@ -1,20 +1,9 @@
 #include <lemon/lgf_writer.h>
-#include <lemon/network_simplex.h>
-#include <lemon/capacity_scaling.h>
-#include "offline.h"
+#include <cassert>
+#include "parse_trace.h"
+#include "solve_mcf.h"
 
 using namespace lemon;
-
-// comment next line to use CapacityScaling solver
-#define NETWORKSIMPLEX
-
-#ifdef NETWORKSIMPLEX
-typedef NetworkSimplex<SmartDigraph, int64_t, double> SolverType;
-#else
-typedef CapacityScaling<SmartDigraph, int64_t, double, CapacityScalingDefaultTraits<SmartDigraph, int64_t, double> > SolverType;
-#endif
-
-// missing scale etc
 
 int main(int argc, char* argv[]) {
 
@@ -25,7 +14,7 @@ int main(int argc, char* argv[]) {
 
     std::string path(argv[1]);
     uint64_t cacheSize(atoll(argv[2]));
-    int scale(atoi(argv[3]));
+    int solverPar(atoi(argv[3]));
 
     // parse trace file
     std::vector<traceEntry> trace;
@@ -48,47 +37,12 @@ int main(int argc, char* argv[]) {
     for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) ++vertices;
     std::cerr << vertices << " arcs " << std::endl;
 
-    // solve the mcf instance
-    SolverType solver(g);
-    solver.upperMap(cap).costMap(cost).supplyMap(supplies);
-
-    SolverType::ProblemType res;
-#ifdef NETWORKSIMPLEX
-    switch(scale) {
-        case 1: res = solver.run(SolverType::FIRST_ELIGIBLE);
-            std::cerr << "solver: NetworkSimplex FE ";
-            break;
-        case 2: res = solver.run(SolverType::BEST_ELIGIBLE);
-            std::cerr << "solver: NetworkSimplex BE ";
-            break;
-        case 4: res = solver.run(SolverType::CANDIDATE_LIST);
-            std::cerr << "solver: NetworkSimplex CL ";
-            break;
-        case 8: res = solver.run(SolverType::ALTERING_LIST);
-            std::cerr << "solver: NetworkSimplex AL ";
-            break;
-        default: res = solver.run(SolverType::BLOCK_SEARCH);
-            std::cerr << "solver: NetworkSimplex BS ";
-            break;
-     }
-#else
-    res = solver.run(scale);
-    std::cerr << "solver: CapacityScaling S" << scale << " ";
-#endif
-
-
-    if(res==SolverType::INFEASIBLE) {
-        std::cerr << "infeasible mcf" << std::endl;
-        return -1;
-    } else if (res==SolverType::UNBOUNDED) {
-        std::cerr << "unbounded mcf" << std::endl;
-        return -1;
-    }
-
-    std::cerr << "optimal solution: cost " << solver.totalCost<double>() << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solver.totalCost<double>())+totalUniqC)/totalReqc << std::endl;
-    
     SmartDigraph::ArcMap<uint64_t> flow(g);
-    solver.flowMap(flow);
+    double solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
+    assert(solval>0);
+
+    std::cerr << "solution par " << solverPar << " cost " << solval << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
+    
     for(auto & it: trace) {
         const uint64_t id=std::get<0>(it);
         const uint64_t size=std::get<1>(it);
