@@ -13,6 +13,7 @@
 
 // uncomment to enable debugging:
 //#define CDEBUG 1
+//#define EDEBUG 1
 
 // util for debug
 #ifdef CDEBUG
@@ -21,6 +22,11 @@
 #else
 #define LOGnl(m,x,y,z,a)
 #define LOG(m,x,y,z,a)
+#endif
+#ifdef EDEBUG
+#define LOGE(m,x,y,z,a) log_message(m,x,y,z,a,"\n")
+#else
+#define LOGE(m,x,y,z,a)
 #endif
 inline void log_message(std::string m, double x, double y, double z, double a, std::string e) {
     std::cerr << m << "," << x << "," << y  << "," << z << "," << a << e;
@@ -174,25 +180,30 @@ int main(int argc, char* argv[]) {
         assert(timeStar > 0); // first time interval can't be the unstable one
         
         LOGnl("\nd*,t*",deltaStar,timeStar,0,0);
-        std::cout << "d*" << deltaStar << " t* " << timeStar;
+        std::cout << "d*" << deltaStar << " t* " << timeStar << "\n";
         
         // find smallest rho so that p2 reaches zero
         double rho = 1;
+        size_t toExclude = 0;
         for(auto & vit : maxI) {
             trEntry & curEntry = trace[vit.second];
-            const double thisRho = curEntry.pval/curEntry.size;
-            rho = thisRho <= rho ? thisRho : rho;
+            const double thisRho = curEntry.pval/static_cast<double>(curEntry.size);
+            if(thisRho <= rho) {
+                rho = thisRho;
+                toExclude = vit.second;
+                LOGE("mrho",rho,vit.second,curEntry.pval,curEntry.size);
+            }
         }
         assert(rho < 1);
         LOGnl("min rho ",rho,0,0,0);
-        std::cout << " mrho " << rho << "\n";
+        //        std::cout << " mrho " << rho << "\n";
         
         // update p2, exclude intervals with p2=0 from schedule
         for(auto & vit : maxI) {
             trEntry & curEntry = trace[vit.second];
 
-            // p2==0
-            if(curEntry.pval <= rho * curEntry.size ) {
+            // if (min-rho-entry or p2==0): we need the first check due to double rounding errors
+            if(vit.second==toExclude || curEntry.pval <= rho * curEntry.size ) {
                 LOGnl("exclude (t,id,size,p2)",vit.second,id,curEntry.size,curEntry.pval - rho*curEntry.size);
                 curEntry.pval = 0;
                 curEntry.inSchedule = false;
