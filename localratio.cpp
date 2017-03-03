@@ -180,7 +180,6 @@ int main(int argc, char* argv[]) {
         assert(timeStar > 0); // first time interval can't be the unstable one
         
         LOGnl("\nd*,t*",deltaStar,timeStar,0,0);
-        std::cout << "d*" << deltaStar << " t* " << timeStar << "\n";
         
         // find smallest rho so that p2 reaches zero
         double rho = 1;
@@ -196,7 +195,6 @@ int main(int argc, char* argv[]) {
         }
         assert(rho < 1);
         LOGnl("min rho ",rho,0,0,0);
-        //        std::cout << " mrho " << rho << "\n";
         
         // update p2, exclude intervals with p2=0 from schedule
         for(auto & vit : maxI) {
@@ -269,7 +267,6 @@ int main(int argc, char* argv[]) {
     }
 
     std::cerr << "found maximal schedule\n";
-
     std::cout << "hitc " << scheduleSet.size() << " reqc " << trace.size() << " OHR " << static_cast<double>(scheduleSet.size())/trace.size() << "\n";
     
     return 0;
