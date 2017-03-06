@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
     }
     maxI.clear();
     std::cerr << "found feasible schedule\n";
-    std::cout << "hitc " << scheduleSet.size() << " reqc " << trace.size() << " OHR " << static_cast<double>(scheduleSet.size())/trace.size() << "\n";
+    std::cout << "LR1 " << cacheSize << " hitc " << scheduleSet.size() << " reqc " << trace.size() << " OHR " << static_cast<double>(scheduleSet.size())/trace.size() << "\n";
 
     // we now have a feasible schedule, which might not be maximal
 
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cerr << "found maximal schedule\n";
-    std::cout << "hitc " << scheduleSet.size() << " reqc " << trace.size() << " OHR " << static_cast<double>(scheduleSet.size())/trace.size() << "\n";
+    std::cout << "LR2 " << cacheSize << " hitc " << scheduleSet.size() << " reqc " << trace.size() << " OHR " << static_cast<double>(scheduleSet.size())/trace.size() << "\n";
     
     return 0;
 }
