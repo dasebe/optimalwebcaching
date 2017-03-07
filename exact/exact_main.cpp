@@ -1,8 +1,8 @@
 #include <fstream>
 #include <lemon/lgf_writer.h>
 #include <cassert>
-#include "../lib/parse_trace.h"
-#include "../lib/solve_mcf.h"
+#include "lib/parse_trace.h"
+#include "lib/solve_mcf.h"
 
 using namespace lemon;
 

@@ -1,6 +1,6 @@
 TARGET = exact
-OBJS += ../lib/parse_trace.o
-OBJS += ../lib/solve_mcf.o
+OBJS += lib/parse_trace.o
+OBJS += lib/solve_mcf.o
 OBJS += ../exact/exact_main.o
 
 CXX = g++ #clang++ #OSX
