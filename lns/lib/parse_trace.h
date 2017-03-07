@@ -13,6 +13,7 @@ struct trEntry {
     size_t nextSeen;
     bool hasNext;
     int arcId;
+    long double utility;
 
     trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
         : id(nid),
@@ -23,6 +24,7 @@ struct trEntry {
         nextSeen = 0;
         hasNext = false;
         arcId = -1;
+        utility = 0;
     };
 };
 
@@ -51,4 +53,4 @@ namespace std
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path);
 
-void createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies);
+//void createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies);
