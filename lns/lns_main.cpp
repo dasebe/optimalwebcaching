@@ -63,11 +63,11 @@ int main(int argc, char* argv[]) {
     // get utility boundaries for ejection sets (based on ejection set size)
     std::vector<long double> utilSteps;
     utilSteps.push_back(1); // max util as start
-    uint64_t maxEjectSize = utilities.size()/std::sqrt(totalReqc-totalUniqC); //+1
+    uint64_t maxEjectSize = 10*utilities.size()/std::sqrt(totalReqc-totalUniqC); //+1
     uint64_t curEjectSize = 0;
     LOG("ejSize",maxEjectSize,trace.size(),utilities.size());
+    assert(maxEjectSize>0);
     for(auto it=--(utilities.end()); it!=utilities.begin(); it--) { //TBD last entry?
-        assert(it!=utilities.end());
         curEjectSize++;
         if(curEjectSize >= maxEjectSize/2 && (*it != *(--(utilSteps.end())) ) ) {
             utilSteps.push_back(*it);
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
         // set step's util boundaries
         const long double minUtil = utilSteps[k+2];
         const long double maxUtil = utilSteps[k];
-        std::cout << "iteration utility min " << minUtil << " max " << maxUtil << "\n";
+        std::cout << "iteration utility min " << minUtil << " max " << maxUtil << "";
 
         // create a graph with just arcs with utility between minUtil and maxUtil
         curNode = g.addNode(); // initial node
@@ -171,7 +171,7 @@ int main(int argc, char* argv[]) {
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
         solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
-        std::cout << "sol step cost " << solval << " effES " << effectiveEjectSize <<"\n";
+        std::cout << "sol step cost " << solval << " effES " << effectiveEjectSize <<"";
 
         // write DVAR to trace
         solval = 0;
