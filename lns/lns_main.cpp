@@ -8,7 +8,7 @@
 
 
 // uncomment to enable debugging:
-#define DEBUG 1
+//#define DEBUG 1
 
 #ifdef DEBUG
 #define LOG(m,x,y,z) log_message(m,x,y,z,"\n")
@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
     }
     utilSteps.push_back(0); // min util as end
     utilities.clear();
+    std::cout << "ejection sets #sets: " << utilSteps.size() << " |set| " << maxEjectSize << "\n";
+        
 
     long double solval;
     size_t effectiveEjectSize;
@@ -98,7 +100,7 @@ int main(int argc, char* argv[]) {
         std::cout << "iteration utility min " << minUtil << " max " << maxUtil << "\n";
 
         // create a graph with just arcs with utility between minUtil and maxUtil
-        g.addNode(); // initial node
+        curNode = g.addNode(); // initial node
         effectiveEjectSize = 0;
 
         for(uint64_t i=0; i<trace.size(); i++) {
@@ -169,15 +171,15 @@ int main(int argc, char* argv[]) {
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
         solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
-        std::cout << "sol step cost " << solval << " effES " << effectiveEjectSize;
+        std::cout << "sol step cost " << solval << " effES " << effectiveEjectSize <<"\n";
 
         // write DVAR to trace
         solval = 0;
         for(uint64_t i=0; i<trace.size(); i++) {
             if(trace[i].active) {
-                trace[i].dvar = flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
-                LOG("write dvars",i,trace[i].dvar,trace[i].size);
+                trace[i].dvar = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
             }
+            LOG("dv",i,trace[i].dvar,trace[i].size);
             assert(trace[i].dvar >= 0 && trace[i].dvar<=1);
             solval += trace[i].dvar;
         }
