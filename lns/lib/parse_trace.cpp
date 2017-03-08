@@ -1,6 +1,7 @@
 //#include <iostream>
 #include <fstream>
 #include <map>
+#include <cassert>
 #include <unordered_map>
 #include <tuple>
 #include "parse_trace.h"
@@ -17,7 +18,10 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
             trace[lastSeen[std::make_pair(id,size)]].hasNext = true;
             trace[lastSeen[std::make_pair(id,size)]].nextSeen = reqc;
             const long double intervalLength = reqc-lastSeen[std::make_pair(id,size)];
-            trace[lastSeen[std::make_pair(id,size)]].utility = 1.0L/(static_cast<double>(size)*intervalLength);
+            // calculate utility
+            const long double utilityDenominator = size*intervalLength;
+            assert(utilityDenominator>0);
+            trace[lastSeen[std::make_pair(id,size)]].utility = 1.0L/utilityDenominator;
         } else {
             uniqc++;
         }

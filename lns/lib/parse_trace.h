@@ -9,22 +9,24 @@ struct trEntry {
     const uint64_t id;
     const uint64_t size;
     const uint64_t origTime;
-    double decvar;
+    double dvar;
     size_t nextSeen;
     bool hasNext;
     int arcId;
     long double utility;
+    bool active;
 
     trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
         : id(nid),
           size(nsize),
-          origTime(ntime)
+          origTime(ntime),
+          dvar(0),
+          nextSeen(0),
+          hasNext(false),
+          arcId(-1),          
+          utility(0),
+          active(false)
     {
-        decvar = 0;
-        nextSeen = 0;
-        hasNext = false;
-        arcId = -1;
-        utility = 0;
     };
 };
 
