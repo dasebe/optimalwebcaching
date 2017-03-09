@@ -16,7 +16,7 @@
 #define LOG(m,x,y,z)
 #endif
 inline void log_message(std::string m, double x, double y, double z, std::string e) {
-    std::cout << m << "," << x << "," << y  << "," << z << e;
+    std::cerr << m << "," << x << "," << y  << "," << z << e;
 }
 
 inline bool isInEjectSet(const long double minUtil, const long double maxUtil, const trEntry & curEntry) {
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
     std::vector<trEntry> trace;
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
-    std::cout << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
+    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
 
     // max ejection size mustn't be larger than actual trace
     if(maxEjectSize > totalReqc - totalUniqC) {
