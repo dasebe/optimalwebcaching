@@ -50,12 +50,6 @@ int main(int argc, char* argv[]) {
         maxEjectSize = totalReqc - totalUniqC;
     }
     
-    // create mcf instance
-    SmartDigraph g; // mcf graph
-    SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
-    SmartDigraph::ArcMap<double> cost(g); // mcf costs
-    SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
-
     // ordered list of utilities and check that objects have size less than cache size
     std::multiset<long double> utilities;
     for(auto & it: trace) {
@@ -106,6 +100,11 @@ int main(int argc, char* argv[]) {
         const long double maxUtil = utilSteps[k];
 
         // create a graph with just arcs with utility between minUtil and maxUtil
+        // mcf instance data
+        SmartDigraph g; // mcf graph
+        SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
+        SmartDigraph::ArcMap<double> cost(g); // mcf costs
+        SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
         curNode = g.addNode(); // initial node
         effectiveEjectSize = 0;
 
