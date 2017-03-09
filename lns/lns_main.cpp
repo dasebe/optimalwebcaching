@@ -28,14 +28,15 @@ using namespace lemon;
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 4) {
-        std::cerr << argv[0] << " traceFile cacheSize solverParam" << std::endl;
+    if (argc != 5) {
+        std::cerr << argv[0] << " traceFile cacheSize solverParam maxEjectSize" << std::endl;
         return 1;
     }
 
     std::string path(argv[1]);
-    uint64_t cacheSize(atoll(argv[2]));
-    int solverPar(atoi(argv[3]));
+    uint64_t cacheSize(std::stoull(argv[2]));
+    int solverPar(std::stoi(argv[3]));
+    uint64_t maxEjectSize(std::stoull(argv[4]));
 
     // parse trace file
     std::vector<trEntry> trace;
@@ -43,6 +44,11 @@ int main(int argc, char* argv[]) {
     uint64_t totalReqc = trace.size();
     std::cout << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
 
+    // max ejection size mustn't be larger than actual trace
+    if(maxEjectSize > totalReqc - totalUniqC) {
+        maxEjectSize = totalReqc - totalUniqC;
+    }
+    
     // create mcf instance
     SmartDigraph g; // mcf graph
     SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
@@ -63,7 +69,6 @@ int main(int argc, char* argv[]) {
     // get utility boundaries for ejection sets (based on ejection set size)
     std::vector<long double> utilSteps;
     utilSteps.push_back(1); // max util as start
-    uint64_t maxEjectSize = 10*utilities.size()/std::sqrt(totalReqc-totalUniqC); //+1
     uint64_t curEjectSize = 0;
     LOG("ejSize",maxEjectSize,trace.size(),utilities.size());
     assert(maxEjectSize>0);
@@ -78,10 +83,10 @@ int main(int argc, char* argv[]) {
     }
     utilSteps.push_back(0); // min util as end
     utilities.clear();
-    std::cout << "ejection sets #sets: " << utilSteps.size() << " |set| " << maxEjectSize << "\n";
+    std::cerr << "ejection sets - #sets: " << utilSteps.size() << " |set|: " << maxEjectSize << "\n";
         
 
-    long double solval;
+    long double curCost, curHits, overallHits;
     size_t effectiveEjectSize;
     std::map<std::pair<uint64_t, uint64_t>, std::pair<uint64_t, int> > lastSeen;
     SmartDigraph::Arc curArc;
@@ -97,7 +102,6 @@ int main(int argc, char* argv[]) {
         // set step's util boundaries
         const long double minUtil = utilSteps[k+2];
         const long double maxUtil = utilSteps[k];
-        std::cout << "iteration utility min " << minUtil << " max " << maxUtil << "";
 
         // create a graph with just arcs with utility between minUtil and maxUtil
         curNode = g.addNode(); // initial node
@@ -170,21 +174,24 @@ int main(int argc, char* argv[]) {
 
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
-        solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
-        std::cout << "sol step cost " << solval << " effES " << effectiveEjectSize <<"";
+        curCost = solveMCF(g, cap, cost, supplies, flow, solverPar);
 
         // write DVAR to trace
-        solval = 0;
+        curHits = 0;
+        overallHits = 0;
         for(uint64_t i=0; i<trace.size(); i++) {
             if(trace[i].active) {
                 trace[i].dvar = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
+                curHits += trace[i].dvar;
             }
             LOG("dv",i,trace[i].dvar,trace[i].size);
             assert(trace[i].dvar >= 0 && trace[i].dvar<=1);
-            solval += trace[i].dvar;
+            overallHits += trace[i].dvar;
         }
 
-        std::cout << " reqc " << solval << "\n";
+        std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
+                  << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
+                  << " oH " << overallHits << " oR " << totalReqc << "\n";
     }
     
     return 0;
