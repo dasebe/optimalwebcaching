@@ -28,8 +28,8 @@ using namespace lemon;
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 5) {
-        std::cerr << argv[0] << " traceFile cacheSize solverParam maxEjectSize" << std::endl;
+    if (argc != 6) {
+        std::cerr << argv[0] << " traceFile cacheSize solverParam maxEjectSize resultPath" << std::endl;
         return 1;
     }
 
@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
     uint64_t cacheSize(std::stoull(argv[2]));
     int solverPar(std::stoi(argv[3]));
     uint64_t maxEjectSize(std::stoull(argv[4]));
+    std::string resultPath(argv[5]);
 
     // parse trace file
     std::vector<trEntry> trace;
@@ -62,6 +63,7 @@ int main(int argc, char* argv[]) {
             it.hasNext = false;
         }
         if(it.hasNext) {
+            assert(it.utility>=0);
             utilities.insert(it.utility);
         }
     }
@@ -189,10 +191,23 @@ int main(int argc, char* argv[]) {
             overallHits += trace[i].dvar;
         }
 
+        // output iteration statistics
         std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " oH " << overallHits << " oR " << totalReqc << "\n";
     }
+
+    // output decision variables and utilities
+    std::ofstream resultfile(resultPath);
+
+    for(auto & it: trace) {
+        resultfile << it.origTime << " "
+                   << it.id << " " << it.size << " "
+                   << it.utility << " "
+                   << it.dvar << "\n";
+    }
+
+
     
     return 0;
 }
