@@ -116,7 +116,10 @@ int main(int argc, char* argv[]) {
         }
 
         lastSeen.clear();
+        std::cerr << "k " << k << " kmin " << kmin << " kmax "
+                  << " starting 0 solver 0 x 0 cR " << effectiveEjectSize << "\n";
 
+        
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
         curCost = solveMCF(g, cap, cost, supplies, flow, solverPar);
