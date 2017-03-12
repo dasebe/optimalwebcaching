@@ -4,6 +4,19 @@
 
 using namespace lemon;
 
+// uncomment to enable debugging:
+//#define DEBUG 1
+#ifdef DEBUG
+#define LOG(m,x,y,z) log_message(m,x,y,z,"\n")
+#else
+#define LOG(m,x,y,z)
+#endif
+inline void log_message(std::string m, double x, double y, double z, std::string e) {
+    std::cerr << m << "," << x << "," << y  << "," << z << e;
+}
+
+
+
 // trace entry
 struct trEntry {
     const uint64_t id;
@@ -55,4 +68,8 @@ namespace std
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path);
 
-//void createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies);
+inline bool isInEjectSet(const long double minUtil, const long double maxUtil, const trEntry & curEntry) {
+    return( curEntry.utility>=minUtil && curEntry.utility<maxUtil );
+}
+
+uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const long double minUtil, const long double maxUtil);
