@@ -66,12 +66,31 @@ int main(int argc, char* argv[]) {
     long double curCost, curHits, overallHits;
     size_t effectiveEjectSize;
     
+    bool soFarFeasibleCacheAll = true;
 
     // LNS iteration steps
     for(size_t k=0; k+2<utilSteps.size(); k++) {
         // set step's util boundaries
         const long double minUtil = utilSteps[k+2];
         const long double maxUtil = utilSteps[k];
+
+        // check if we can simply add all intervals of the current ejection set
+        if(soFarFeasibleCacheAll) {
+            soFarFeasibleCacheAll = feasibleCacheAll(trace, cacheSize, minUtil, maxUtil);
+            if(soFarFeasibleCacheAll) {
+                // set all dvars of this injection set to 1
+                for(uint64_t i=0; i<trace.size(); i++) {
+                    if(trace[i].active) {
+                        trace[i].dvar = 1;
+                        curHits += trace[i].dvar;
+                    }
+                    LOG("dv",i,trace[i].dvar,trace[i].size);
+                    overallHits += trace[i].dvar;
+                }
+                // we can now skip the rest of this iteration
+                continue;
+            }
+        }
 
         // create MCF digraph with arc utilities in [minUtil,maxUtil]
         SmartDigraph g; // mcf graph

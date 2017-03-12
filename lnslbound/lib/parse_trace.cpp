@@ -111,3 +111,51 @@ uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cac
     return effectiveEjectSize;
 
 }
+
+
+
+bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const long double minUtil, const long double maxUtil) {
+
+    // delta data structures: from localratio technique
+    int64_t curDelta;
+    int64_t deltaStar;
+    // map currently cached (id,size) to interval index in trace
+    std::unordered_map<std::pair<uint64_t, uint64_t>, size_t> curI; //intersecting intervals at current time
+
+    curDelta = -cacheSize;
+    deltaStar = -cacheSize;
+
+    for(size_t j=0; j<trace.size(); j++) {
+        trEntry & curEntry = trace[j];
+
+        // if no next request and in intersecting intervals -> remove
+        if(!curEntry.hasNext &  (curI.count(std::make_pair(curEntry.id,curEntry.size)) > 0) ) {
+            curI.erase(std::make_pair(curEntry.id,curEntry.size));
+            curDelta -= curEntry.size;
+            assert(curEntry.dvar==0);
+        }
+
+        // if in ejection set or already cached
+        if(isInEjectSet(minUtil, maxUtil, curEntry) || curEntry.dvar>0) {
+
+            // if not already in current intersecting set
+            if(curI.count(std::make_pair(curEntry.id,curEntry.size))<=0 ) {
+                curDelta += curEntry.size;
+            } // else: don't need update the size/width
+
+            // add to current intersecting set
+            curI[std::make_pair(curEntry.id,curEntry.size)] = j;
+
+            // check if we need to update deltaStar
+            if(curDelta > deltaStar) {
+                deltaStar = curDelta;
+            }
+
+            // mark as in injection set
+            curEntry.active = 1;
+        }
+    }
+    // return feasibility bool
+    return (deltaStar <=0);
+
+}
