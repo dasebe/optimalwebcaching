@@ -63,8 +63,8 @@ int main(int argc, char* argv[]) {
     std::cerr << "ejection sets - #sets: " << utilSteps.size() << " |set|: " << maxEjectSize << "\n";
         
 
-    long double curCost, curHits, overallHits;
-    size_t effectiveEjectSize;
+    long double curCost=0, curHits, overallHits;
+    size_t effectiveEjectSize=0;
     
     bool soFarFeasibleCacheAll = true;
 
@@ -79,14 +79,21 @@ int main(int argc, char* argv[]) {
             soFarFeasibleCacheAll = feasibleCacheAll(trace, cacheSize, minUtil, maxUtil);
             if(soFarFeasibleCacheAll) {
                 // set all dvars of this injection set to 1
+                curHits = 0;
+                overallHits = 0;
                 for(uint64_t i=0; i<trace.size(); i++) {
                     if(trace[i].active) {
                         trace[i].dvar = 1;
+                        trace[trace[i].nextSeen].hit = 1;
                         curHits += trace[i].dvar;
                     }
                     LOG("dv",i,trace[i].dvar,trace[i].size);
                     overallHits += trace[i].dvar;
                 }
+                // output iteration statistics
+                std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
+                          << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
+                          << " oH " << overallHits << " oR " << totalReqc << "\n";
                 // we can now skip the rest of this iteration
                 continue;
             }
@@ -109,6 +116,7 @@ int main(int argc, char* argv[]) {
         for(uint64_t i=0; i<trace.size(); i++) {
             if(trace[i].active) {
                 trace[i].dvar = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
+                trace[trace[i].nextSeen].hit = trace[i].dvar;
                 curHits += trace[i].dvar;
             }
             LOG("dv",i,trace[i].dvar,trace[i].size);
@@ -129,7 +137,8 @@ int main(int argc, char* argv[]) {
         resultfile << it.origTime << " "
                    << it.id << " " << it.size << " "
                    << it.utility << " "
-                   << it.dvar << "\n";
+                   << it.dvar << " "
+                   << it.hit << "\n";
     }
 
 

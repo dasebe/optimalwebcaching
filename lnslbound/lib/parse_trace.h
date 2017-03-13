@@ -22,7 +22,8 @@ struct trEntry {
     const uint64_t id;
     const uint64_t size;
     const uint64_t origTime;
-    double dvar;
+    double dvar; //for the interval that starts here
+    double hit; //for the interval that ends here
     size_t nextSeen;
     bool hasNext;
     int arcId;
@@ -34,6 +35,7 @@ struct trEntry {
           size(nsize),
           origTime(ntime),
           dvar(0),
+          hit(0),
           nextSeen(0),
           hasNext(false),
           arcId(-1),          
