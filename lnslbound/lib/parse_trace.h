@@ -76,4 +76,4 @@ inline bool isInEjectSet(const long double minUtil, const long double maxUtil, c
 
 uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const long double minUtil, const long double maxUtil);
 
-bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const long double minUtil, const long double maxUtil);
+bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const long double minUtil);

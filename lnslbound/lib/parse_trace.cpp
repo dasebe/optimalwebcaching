@@ -114,7 +114,7 @@ uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cac
 
 
 
-bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const long double minUtil, const long double maxUtil) {
+bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const long double minUtil) {
 
     // delta data structures: from localratio technique
     int64_t curDelta;
@@ -135,8 +135,8 @@ bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const l
             assert(curEntry.dvar==0);
         }
 
-        // if in ejection set or already cached
-        if(isInEjectSet(minUtil, maxUtil, curEntry) || curEntry.dvar>0) {
+        // if with utility in [minUtil,1]
+        if(isInEjectSet(minUtil, 1.01, curEntry) && cacheSize >= curEntry.size) {
 
             // if not already in current intersecting set
             if(curI.count(std::make_pair(curEntry.id,curEntry.size))<=0 ) {
@@ -150,9 +150,6 @@ bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const l
             if(curDelta > deltaStar) {
                 deltaStar = curDelta;
             }
-
-            // mark as in injection set
-            curEntry.active = 1;
         }
     }
     // return feasibility bool
