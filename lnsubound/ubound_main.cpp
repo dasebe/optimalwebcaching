@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     std::vector<trEntry> trace;
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
-    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
+    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << " maxES=" << maxEjectSize << std::endl;
 
     // max ejection size mustn't be larger than actual trace
     if(maxEjectSize > totalReqc - totalUniqC) {
@@ -77,11 +77,11 @@ int main(int argc, char* argv[]) {
             // first: check if previous interval ended here
             if(lastSeen.count(std::make_pair(curEntry.id,curEntry.size))>0) {
                 // create "outer" request arc
-                const SmartDigraph::Node lastReq = g.nodeFromId(lastSeen[std::make_pair(curEntry.id,curEntry.size)].second);
-                curArc = g.addArc(lastReq,curNode);
+                const SmartDigraph::Node lastReqNode = g.nodeFromId(lastSeen[std::make_pair(curEntry.id,curEntry.size)].second);
+                curArc = g.addArc(lastReqNode,curNode);
                 cap[curArc] = curEntry.size;
                 cost[curArc] = 1/static_cast <double>(curEntry.size);
-                supplies[lastReq] += curEntry.size;
+                supplies[lastReqNode] += curEntry.size;
                 supplies[curNode] -= curEntry.size;
                 trace[lastSeen[std::make_pair(curEntry.id,curEntry.size)].first].arcId = g.id(curArc);
                 trace[lastSeen[std::make_pair(curEntry.id,curEntry.size)].first].active = true;
@@ -108,15 +108,15 @@ int main(int argc, char* argv[]) {
                         curNode = g.addNode(); // next node
                         curArc = g.addArc(prevNode,curNode);
                         cap[curArc] = cacheSize; 
+                        cost[curArc] = 0;
                         // DEBUG
                         LOG("iA",i,cap[curArc],0);
-                        cost[curArc] = 0;
                     }
             }
         }
 
         lastSeen.clear();
-        std::cerr << "k " << k << " kmin " << kmin << " kmax "
+        std::cerr << "k " << k << " kmin " << kmin << " kmax " << kmax
                   << " starting 0 solver 0 x 0 cR " << effectiveEjectSize << "\n";
 
         
@@ -129,7 +129,10 @@ int main(int argc, char* argv[]) {
         overallHits = 0;
         for(uint64_t i=0; i<trace.size(); i++) {
             if(trace[i].active) {
-                trace[i].dvar = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
+                const double newDvarVal = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
+                if(trace[i].dvar < newDvarVal) {
+                    trace[i].dvar = newDvarVal;
+                }
                 curHits += trace[i].dvar;
             }
             LOG("dv",i,trace[i].dvar,trace[i].size);
