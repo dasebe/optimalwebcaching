@@ -66,37 +66,71 @@ int main(int argc, char* argv[]) {
     long double curCost=0, curHits, overallHits;
     size_t effectiveEjectSize=0;
     
+    // binary search for highest k such that (k+1) unfeasible and (k) feasible to set all dvars with utility > minUtil[k] to 1
+    size_t kMinUnFeasible = utilSteps.size()-3;
+    size_t kMaxFeasible = 0;
     bool soFarFeasibleCacheAll = true;
 
     // LNS iteration steps
-    for(size_t k=0; k+2<utilSteps.size(); k++) {
+    for(size_t k=kMaxFeasible; k+2<utilSteps.size(); k++) {
         // set step's util boundaries
         const long double minUtil = utilSteps[k+2];
         const long double maxUtil = utilSteps[k];
 
         // check if we can simply add all intervals of the current ejection set
         if(soFarFeasibleCacheAll) {
-            soFarFeasibleCacheAll = feasibleCacheAll(trace, cacheSize, minUtil, maxUtil);
-            if(soFarFeasibleCacheAll) {
-                // set all dvars of this injection set to 1
+            soFarFeasibleCacheAll = feasibleCacheAll(trace, cacheSize, minUtil);
+
+            // output iteration statistics
+            std::cout << "k " << k << " lU " << minUtil << " uU " << 1
+                      << " feas " << soFarFeasibleCacheAll << " maxfeas " << kMaxFeasible << " minunfeas " << kMinUnFeasible
+                      << " pp " << 1 << " oR " << totalReqc << "\n";
+                
+            // not feasible
+            if(!soFarFeasibleCacheAll) {
+                // update kMinUnFeasible as this was not feasible
+                if(k<kMinUnFeasible) {
+                    kMinUnFeasible = k;
+                }
+                // update k to middle of interval
+                k = kMaxFeasible + (kMinUnFeasible-kMaxFeasible)/2-1;
+                // give it another try
+                soFarFeasibleCacheAll = true;
+            } else { // feasible
+                // update kMaxFeasible as this was feasible
+                if(k>kMaxFeasible)
+                    kMaxFeasible = k;
+                // update k to middle of interval
+                k = kMaxFeasible + (kMinUnFeasible-kMaxFeasible)/2-1;
+            }
+            // last iteration
+            if(kMaxFeasible + 1 >= kMinUnFeasible) {
+                // set all dvars of injection (so far) to 1
+                curCost = 0;
                 curHits = 0;
                 overallHits = 0;
+                effectiveEjectSize = 0;
+                // set k to max known feasible sol
+                k=kMaxFeasible;
+                const long double minUtil = utilSteps[k+2];
                 for(uint64_t i=0; i<trace.size(); i++) {
-                    if(trace[i].active) {
+                    effectiveEjectSize++;
+                    if(trace[i].utility>=minUtil && cacheSize >= trace[i].size) {
                         trace[i].dvar = 1;
                         trace[trace[i].nextSeen].hit = 1;
-                        curHits += trace[i].dvar;
+                        curHits++;
+                        overallHits++;
                     }
-                    LOG("dv",i,trace[i].dvar,trace[i].size);
-                    overallHits += trace[i].dvar;
                 }
                 // output iteration statistics
-                std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
+                std::cout << "k " << k << " lU " << minUtil << " uU " << 1
                           << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                           << " oH " << overallHits << " oR " << totalReqc << "\n";
-                // we can now skip the rest of this iteration
-                continue;
+                // we now continue with MCF
+                soFarFeasibleCacheAll = false;
             }
+            // we can now skip the rest of this iteration
+            continue;
         }
 
         // create MCF digraph with arc utilities in [minUtil,maxUtil]
