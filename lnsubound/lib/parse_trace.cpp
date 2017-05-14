@@ -17,7 +17,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
         if(lastSeen.count(std::make_pair(id,size))>0) {
             trace[lastSeen[std::make_pair(id,size)]].hasNext = true;
             trace[lastSeen[std::make_pair(id,size)]].nextSeen = reqc;
-            trace[lastSeen[std::make_pair(id,size)]].dvar = 1;
+            trace[lastSeen[std::make_pair(id,size)]].dvar = 0;
         } else {
             uniqc++;
         }
