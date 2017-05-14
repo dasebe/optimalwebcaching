@@ -130,6 +130,7 @@ int main(int argc, char* argv[]) {
         for(uint64_t i=0; i<trace.size(); i++) {
             if(trace[i].active) {
                 const double newDvarVal = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
+                // take max of prev dvar and current dvar
                 if(trace[i].dvar < newDvarVal) {
                     trace[i].dvar = newDvarVal;
                 }
