@@ -33,13 +33,13 @@ void log_message(string m, double x, double y, double z) {
 int main (int argc, char* argv[])
 {
   // parameters
-  if(argc != 3) {
+  if(argc != 4) {
     return 1;
   }
   const char* path = argv[1];
   uint64_t max_size(atoll(argv[2]));
+  uint64_t lineCount(atoll(argv[3]));
 
-  const long lineCount = 1000000;
   long currentLine = 0;
 
   ifstream infile;

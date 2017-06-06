@@ -27,13 +27,12 @@ void log_message(string m, double x, double y, double z) {
 int main (int argc, char* argv[])
 {
   // parameters
-  if(argc != 3) {
+  if(argc != 4) {
     return 1;
   }
   const char* path = argv[1];
   uint64_t max_size(atoll(argv[2]));
-
-  long lineCount = 1000000;
+  uint64_t lineCount(atoll(argv[3]));
   long currentLine = 0;
 
   ifstream infile;
@@ -129,11 +128,6 @@ int main (int argc, char* argv[])
       if(++currentLine % (lineCount/25) == 0)
 	{
 	  cerr << double(currentLine)/lineCount << '\n';
-	  // gather statistics after initial warm up
-	  if (double(currentLine)/lineCount > 0.2)
-	    {
-	      logStatistics=true;
-	    }	    
 	}
       if (currentLine > lineCount)
 	break;
