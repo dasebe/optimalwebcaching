@@ -43,8 +43,8 @@ int main(int argc, char* argv[]) {
     double solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
     //    assert(solval>0);
 
-    std::cerr << "solution par " << solverPar << " cost " << solval << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
-    std::cout << "solution par " << solverPar << " cost " << solval << " teqs " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
+    std::cerr << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
+    std::cout << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
     
     std::ofstream resultfile(resultPath);
 
