@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
     std::string resultPath(argv[4]);
 
     // parse trace file
-    std::vector<traceEntry> trace;
+    std::vector<trEntry> trace;
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
     std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
@@ -49,15 +49,11 @@ int main(int argc, char* argv[]) {
     std::ofstream resultfile(resultPath);
 
     for(auto & it: trace) {
-        const uint64_t id=std::get<0>(it);
-        const uint64_t size=std::get<1>(it);
-        const uint64_t time=std::get<3>(it);
-        const int arcId=std::get<4>(it);
-        resultfile << time << " " << id << " " << size << " ";
-        if(arcId==-1) 
+        resultfile << it.origTime << " " << it.id << " " << it.size << " ";
+        if(it.arcId==-1) 
             resultfile << "0\n";
         else
-            resultfile << (size-flow[g.arcFromId(arcId)])/static_cast<double>(size) << "\n";
+            resultfile << (it.size-flow[g.arcFromId(it.arcId)])/static_cast<double>(it.size) << "\n";
     }
 
 
