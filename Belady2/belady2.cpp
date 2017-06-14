@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     cacheAlg(trace, cacheSize);
 
     // print results
-    printRes(trace, "forward "+std::to_string(cacheSize));
+    printRes(trace, "Belady2Forward "+std::to_string(cacheSize));
 
     // backward
     LOG("\n--------------------------\n\n",0,0,0);
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
     cacheAlg(trace, cacheSize);
 
     // print results
-    printRes(trace, "backward "+std::to_string(cacheSize));
+    printRes(trace, "Belady2Backward "+std::to_string(cacheSize));
     
     return 0;
 }
