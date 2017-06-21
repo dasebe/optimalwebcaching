@@ -15,10 +15,12 @@ inline void checkInf(long double res) {
 
 inline long double calcPrio(size_t i, trEntry* cand, long double baseL, long double normalizer) {
     long double res = 0;
-    if(cand->nextSeen > i)
-        res = baseL + (cand->nextSeen - i)/normalizer;
+    if(!cand->hasNext)
+        res = normalizer;
+    else if(cand->nextSeen > i)
+        res = cand->nextSeen;
     else 
-        res = baseL + (i - cand->nextSeen)/normalizer;
+        res = -1.0L * i;
     checkInf(res);
     return res;
 }
@@ -37,7 +39,6 @@ void cacheAlg(std::vector<trEntry*> & trace, uint64_t cacheSize) {
         trEntry *cur = trace[i];
         LOG("cur",i,trace.size(),0);
         const auto idSize = std::make_pair(cur->id,cur->size);
-        LOG("idsize",i,idSize.first,idSize.second);
         // check in cache
         if(cacheState.count(idSize) > 0) {
             // cache hit
@@ -50,7 +51,6 @@ void cacheAlg(std::vector<trEntry*> & trace, uint64_t cacheSize) {
             //            checkInf(revPrio[idSize]->first);
             LOG("hitted",cur->id,cur->size,revPrio[idSize]->first);
         } else {
-            LOG("miss",cur->id,cur->size,0);
             // cache miss
             // admit if hasNext
             if(cur->hasNext) {
@@ -65,18 +65,14 @@ void cacheAlg(std::vector<trEntry*> & trace, uint64_t cacheSize) {
                 while(currentSize > cacheSize) {
                     LOG("evict start",prio.size(),0,0);
                     pMap_t::iterator victimIt = --prio.end();
-                    LOG("prio end",victimIt->first,victimIt->second.first,victimIt->second.second);
-                    baseL += victimIt->first;
+                    LOG("evict prio",victimIt->first,victimIt->second.first,victimIt->second.second);
+                    //                    baseL += victimIt->first;
                     assert(cacheState.find(victimIt->second) != cacheState.end());
                     trEntry * evictVictim = cacheState[victimIt->second];
-                    LOG("evict middle",victimIt->first,evictVictim->id,evictVictim->size);
                     cacheState.erase(victimIt->second);
-                    LOG("er cacheState",0,0,0);
                     assert(revPrio.find(victimIt->second) != revPrio.end());
                     revPrio.erase(victimIt->second);
-                    LOG("er revPrio",0,0,0);
                     prio.erase(victimIt);
-                    LOG("er prio",0,0,0);
                     currentSize -= evictVictim->size;
                     LOG("evict end",currentSize,evictVictim->id,evictVictim->size);
                 }

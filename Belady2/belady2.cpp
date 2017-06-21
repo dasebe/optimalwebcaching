@@ -48,15 +48,16 @@ int main(int argc, char* argv[]) {
     // compute backwards
     for(size_t i=0; i<trace.size(); i++) {
         trEntry & cur = trace[i];
-        // reset
+        // reset 
         cur.hasNext = true;
-        cur.nextSeen = 0;
+        cur.nextSeen = i;
         cur.hit = 0;
-        if(lastSeen.count(std::make_pair(cur.id,cur.size)) > 0) {
+        /*        if(lastSeen.count(std::make_pair(cur.id,cur.size)) > 0) {
             //trace[lastSeen[std::make_pair(cur.id, cur.size)]].hasNext = true; // future knowledge
             cur.nextSeen = lastSeen[std::make_pair(cur.id, cur.size)];
         }
         lastSeen[std::make_pair(cur.id, cur.size)] = i;
+        */
     }
 
     // actual caching algorithm

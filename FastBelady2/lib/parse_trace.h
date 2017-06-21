@@ -5,7 +5,7 @@
 #include <map>
 
 // uncomment to enable debugging:
-#define DEBUG 1
+//#define DEBUG 1
 #ifdef DEBUG
 #define LOG(m,x,y,z) log_message(m,x,y,z,"\n")
 #else

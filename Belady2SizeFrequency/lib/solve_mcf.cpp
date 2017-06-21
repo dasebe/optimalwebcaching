@@ -13,7 +13,7 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize) {
         } else {
             // cache miss
             // admit if hasNext
-            if(cur->hasNext) {
+            if(cur->hasNext && cur->size < cacheSize) {
                 cacheState[std::make_pair(cur->id,cur->size)] = cur;
                 currentSize += cur->size;
                 LOG("admitted",cur->id,cur->size,currentSize);
@@ -22,7 +22,7 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize) {
                 while(currentSize > cacheSize) {
                     //                    LOG("eviction needed",currentSize,cacheSize,0);
                     
-                    long double maxDistance = 0, curDistance;
+                    long double maxDistance = -1, curDistance;
                     trEntry * evictVictim = &trace[0];
                     for(auto & it: cacheState) {
                         trEntry * cand = it.second;

@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     cacheAlg(trace, cacheSize);
 
     // print results
-    printRes(trace, "Belady2SizeForward "+std::to_string(cacheSize));
+    printRes(trace, "Belady2SizeFrequencyForward "+std::to_string(cacheSize));
 
     // backward
     LOG("\n--------------------------\n\n",0,0,0);
@@ -53,14 +53,12 @@ int main(int argc, char* argv[]) {
         trEntry & cur = trace[i];
         // reset
         cur.hasNext = true;
-        cur.nextSeen = 0;
+        cur.nextSeen = i;
         cur.hit = 0;
         cur.frequency = 1;
-        if(lastSeen.count(std::make_pair(cur.id,cur.size)) > 0) {
-            cur.nextSeen = lastSeen[std::make_pair(cur.id, cur.size)];
+        if(frequency.count(std::make_pair(cur.id,cur.size)) > 0) {
             cur.frequency = frequency[std::make_pair(cur.id, cur.size)];
         }
-        lastSeen[std::make_pair(cur.id, cur.size)] = i;
         frequency[std::make_pair(cur.id, cur.size)]++;
     }
 
@@ -68,7 +66,7 @@ int main(int argc, char* argv[]) {
     cacheAlg(trace, cacheSize);
 
     // print results
-    printRes(trace, "Belady2SizeBackward "+std::to_string(cacheSize));
+    printRes(trace, "Belady2SizeFrequencyBackward "+std::to_string(cacheSize));
     
     return 0;
 }
