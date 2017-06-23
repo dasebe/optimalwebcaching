@@ -33,6 +33,8 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
     SmartDigraph::Node curNode = g.addNode(); // initial node
     SmartDigraph::Node prevNode;
 
+    std::cerr << "starting creation of MCF graph" << std::endl;
+
     // iterate over trace
     for(uint64_t i=0; i<trace.size(); i++) {
         trEntry thisTrEntry = trace[i];
@@ -60,8 +62,6 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             curArc = g.addArc(prevNode,curNode);
             cap[curArc] = cacheSize; 
             cost[curArc] = 0;
-            thisTrEntry.startNodeId = g.id(prevNode);
-            thisTrEntry.endNodeId = g.id(curNode);
             thisTrEntry.outerArcId = g.id(curArc);
         }
     }

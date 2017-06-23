@@ -12,10 +12,8 @@ struct trEntry {
     double dvar;
     size_t nextSeen;
     bool hasNext;
-    int outerArcId;
-    int innerArcId;
-    int startNodeId;
-    int endNodeId;
+    int64_t outerArcId;
+    int64_t innerArcId;
     trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
         : id(nid),
           size(nsize),
@@ -24,9 +22,7 @@ struct trEntry {
           nextSeen(0),
           hasNext(false),
           outerArcId(-1),
-          innerArcId(-1),
-          startNodeId(-1),
-          endNodeId(-1)
+          innerArcId(-1)
     {
     };
 };
