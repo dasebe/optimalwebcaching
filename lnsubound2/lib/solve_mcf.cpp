@@ -16,7 +16,7 @@ _t, double> > SolverType;
 
 using namespace lemon;
 
-double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, SmartDigraph::ArcMap<uint64_t> & flow, int solverPar) {
+double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, SmartDigraph::ArcMap<int64_t> & flow, int solverPar, SmartDigraph::NodeMap<double> & lnsPi) {
 
     // solve the mcf instance
     SolverType solver(g);
@@ -48,7 +48,11 @@ double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigr
         return -1;
     }
 
+    // export flow map
     solver.flowMap(flow);
 
+    // export node potential map
+    solver.potentialMap(lnsPi);
+        
     return solver.totalCost<double>();
 }
