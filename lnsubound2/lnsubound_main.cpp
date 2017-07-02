@@ -1,5 +1,6 @@
 #include <fstream>
 #include <lemon/lgf_writer.h>
+#include <lemon/bellman_ford.h>
 #include <cassert>
 #include <unordered_set>
 #include <unordered_map>
@@ -21,6 +22,8 @@ inline void logMessage(std::string m, double x, double y, double z) {
 #endif
 
 using namespace lemon;
+
+typedef BellmanFord<SmartDigraph, SmartDigraph::ArcMap<double>> BellSolveType;
 
 int main(int argc, char* argv[]) {
 
@@ -247,9 +250,19 @@ int main(int argc, char* argv[]) {
                 lnsAlpha[it] = curAlpha;
             else
                 lnsAlpha[it] = 0;
+            //LOG("alphaC\t"+std::to_string(lnsAlpha[it]),lnsPi[lnsG.source(it)],lnsPi[lnsG.target(it)],lnsCost[it]);
         }
 
-        long double testVal = 0;
+        long double testVal;
+
+
+        testVal = 0;
+        for (SmartDigraph::NodeIt it(lnsG); it!=INVALID; ++it) {
+            testVal += lnsPi[it] * lnsSupplies[it];
+        }
+        LOG("not quite dual Val",testVal,0,0);
+
+        testVal = 0;
         for (SmartDigraph::NodeIt it(lnsG); it!=INVALID; ++it) {
             testVal += lnsPi[it] * lnsSupplies[it];
             //            LOG("pis",lnsG.id(it),lnsPi[it],0);
@@ -263,10 +276,112 @@ int main(int argc, char* argv[]) {
         testVal = 0;
         for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
             testVal += lnsFlow[it] * lnsCost[it];
-            //            LOG("alphas",lnsG.id(it),lnsAlpha[it],lnsFlow[it]);
+            //LOG("alpha",lnsG.id(it),lnsAlpha[it],lnsFlow[it]);
         }
         LOG("primal Val",testVal,0,0);
 
+
+
+
+        //// test
+
+        // create residual graph
+        SmartDigraph resG; // mcf graph
+        SmartDigraph::NodeMap<int64_t> lnsResMap(lnsG);
+        SmartDigraph::NodeMap<int64_t> resLnsMap(resG);
+        SmartDigraph::ArcMap<double> resLength(resG);
+        for (SmartDigraph::NodeIt it(lnsG); it!=INVALID; ++it) {
+            curNode = resG.addNode();
+            lnsResMap[it] = resG.id(curNode);
+            resLnsMap[curNode] = lnsG.id(it);
+        }
+
+        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+            if(lnsFlow[it]<lnsCap[it]) {
+                // add forward arc
+                const int64_t resSourceId = lnsResMap[lnsG.source(it)];
+                const int64_t resTargetId = lnsResMap[lnsG.target(it)];
+                curArc = resG.addArc(resG.nodeFromId(resSourceId),
+                                     resG.nodeFromId(resTargetId));
+                resLength[curArc] = lnsCost[it];
+            }
+            if(lnsFlow[it]>0) {
+                // add reverse arc
+                const int64_t resSourceId = lnsResMap[lnsG.target(it)]; // reverse order
+                const int64_t resTargetId = lnsResMap[lnsG.source(it)];
+                curArc = resG.addArc(resG.nodeFromId(resSourceId),
+                                     resG.nodeFromId(resTargetId));
+                resLength[curArc] = -lnsCost[it];
+            }
+        }
+        
+        BellSolveType bellsolver(resG, resLength);
+        SmartDigraph::NodeMap<double> distResMap(resG);
+        bellsolver.distMap(distResMap);
+        
+        bellsolver.run(curNode);
+
+        /*        for (SmartDigraph::NodeIt it(resG); it!=INVALID; ++it) {
+            LOG("belldists",resG.id(it),-distResMap[it],0);
+        }
+        */
+
+        testVal = 0;
+        for (SmartDigraph::NodeIt it(resG); it!=INVALID; ++it) {
+            const int64_t lnsNodeId = resLnsMap[it];
+            testVal += -distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
+            //    LOG("val",lnsNodeId,-distResMap[it],lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
+        }
+        LOG("3rd not quite dual Val",testVal,0,0);
+        
+
+        SmartDigraph::ArcMap<double> lnsAlpha3(lnsG);
+        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+            const int64_t resSourceId = lnsResMap[lnsG.target(it)]; // reverse order
+            const int64_t resTargetId = lnsResMap[lnsG.source(it)];
+            const double piI = -distResMap[lnsG.nodeFromId(resSourceId)];
+            const double piJ = -distResMap[lnsG.nodeFromId(resTargetId)];
+            const double cij = lnsCost[it];
+            const double curAlpha = piI - piJ - cij;
+            if(curAlpha > 0)
+                lnsAlpha3[it] = curAlpha;
+            else
+                lnsAlpha3[it] = 0;
+            //            LOG("2ndalphas",lnsG.id(it),lnsAlpha3[it],lnsCap[it]);
+        }
+
+        testVal = 0;
+        long double testAlphaPart = 0, testAlphaPartAll = 0;
+        for (SmartDigraph::NodeIt it(resG); it!=INVALID; ++it) {
+            const int64_t lnsNodeId = resLnsMap[it];
+            testVal += -distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
+        }
+        
+        const int64_t eNodeId = lnsResMap[extraNode];
+        LOG("check check",-distResMap[resG.nodeFromId(eNodeId)],lnsSupplies[extraNode],-distResMap[resG.nodeFromId(eNodeId)] * lnsSupplies[extraNode]);
+        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+            //            LOG("2ndalphasl",lnsG.id(it),lnsAlpha3[it],lnsCap[it]);
+            if(lnsCap[it] < maxFlowAmount) {
+                //                LOG("2ndalphasc",lnsG.id(it),lnsAlpha3[it],lnsCap[it]);
+                testVal -= lnsAlpha3[it] * lnsCap[it];
+                testAlphaPart -= lnsAlpha3[it] * lnsCap[it];
+            }
+            testAlphaPartAll -= lnsAlpha3[it] * lnsCap[it];
+        }
+        LOG("3rd dual Val",testVal,testAlphaPart,testAlphaPartAll);
+
+        
+        //// test
+
+
+
+
+
+
+
+
+
+        return 0;
 
         /*LOG("---edges---",0,0,0);
         for (SmartDigraph::ArcIt i(lnsG); i!=INVALID; ++i) {
