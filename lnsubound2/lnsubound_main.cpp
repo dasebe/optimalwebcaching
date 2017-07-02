@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <queue>
+#include <math.h>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
@@ -35,7 +36,7 @@ int main(int argc, char* argv[]) {
     std::cerr << "I'm started and still happy" << std::endl;
 
     std::string path(argv[1]);
-    uint64_t cacheSize(atoll(argv[2]));
+    int64_t cacheSize(atoll(argv[2]));
     uint64_t maxEjectSize(std::stoull(argv[3]));
     //    std::string resultPath(argv[4]);
 
@@ -67,10 +68,6 @@ int main(int argc, char* argv[]) {
         ++nodes;
         pi[n] = 0;
         dualSol += pi[n] * supplies[n];
-        const int64_t curSuppl = supplies[n];
-        if(curSuppl>0) {
-            maxFlowAmount += curSuppl;
-        }
     }
     std::cerr << "created graph with ";
     std::cerr << nodes << " nodes ";
@@ -107,7 +104,8 @@ int main(int argc, char* argv[]) {
     bool extraArcFlag;
     size_t traceIndex;
 
-    for(size_t kmin=0; kmin<trace.size(); kmin=traceIndex - maxEjectSize/2) {
+    // todo fixme: kmin
+    for(size_t kmin=4; kmin<trace.size(); kmin=traceIndex - maxEjectSize/2) {
         // LNS graph structure
         SmartDigraph lnsG; // mcf graph
         extraNode = lnsG.addNode();
@@ -122,6 +120,7 @@ int main(int argc, char* argv[]) {
         // mark nodes for the ejection set
         traceIndex = kmin;
         arcId = -1;
+        maxFlowAmount = 0;
         while(ejectSet.size()<maxEjectSize && traceIndex<trace.size()) {
             const trEntry & curEntry = trace[traceIndex];
             if(curEntry.hasNext) {
@@ -129,12 +128,14 @@ int main(int argc, char* argv[]) {
                 const int64_t ejNodeId = g.id(g.source(g.arcFromId(arcId)));
                 ejectSet.push_back(traceIndex);
                 ejectNodes.insert(ejNodeId);
+                // calc max flow amount as sum of pos supplies
+                maxFlowAmount += curEntry.size;
             }
             traceIndex++;
         }
         LOG("ejS",kmin,maxEjectSize,ejectSet.size());
+        assert(maxFlowAmount>0);
         assert(arcId >= 0);
-
 
         for(size_t i: ejectSet) {
             trEntry & curEntry = trace[i];
@@ -232,6 +233,12 @@ int main(int argc, char* argv[]) {
 
         }
 
+        /*LOG("extranode lastnode",lnsG.id(extraNode),lnsG.id(curNode),0);
+        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+            LOG("lnsG",lnsG.id(lnsG.source(it)),lnsG.id(lnsG.target(it)),lnsCost[it]);//lnsG.id(it),
+            }*/
+
+
         double solval = solveMCF(lnsG, lnsCap, lnsCost, lnsSupplies, lnsFlow, 4, lnsPi);
         LOG("solLNS",solval,ejectNodes.size(),0);
         //        std::cerr << "ExLP" << 4 << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
@@ -259,6 +266,9 @@ int main(int argc, char* argv[]) {
         testVal = 0;
         for (SmartDigraph::NodeIt it(lnsG); it!=INVALID; ++it) {
             testVal += lnsPi[it] * lnsSupplies[it];
+            if(!isfinite(testVal)) {
+                LOG("!!!nan",lnsPi[it],lnsSupplies[it],lnsPi[it] * lnsSupplies[it]);
+            }
         }
         LOG("not quite dual Val",testVal,0,0);
 
@@ -274,12 +284,28 @@ int main(int argc, char* argv[]) {
         LOG("dual Val",testVal,0,0);
 
         testVal = 0;
+        long double flowInCache = 0, flowOutCache = 0, extraFlow = 0;
+        uint64_t arcIn = 0, arcOut = 0, arcExtraTo = 0, arcExtraFrom = 0;
         for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
             testVal += lnsFlow[it] * lnsCost[it];
-            //LOG("alpha",lnsG.id(it),lnsAlpha[it],lnsFlow[it]);
+            if(lnsCap[it] == cacheSize) {
+                flowInCache += lnsFlow[it]* lnsCost[it];
+                arcIn++;
+            } else if (lnsG.source(it) == extraNode) {
+                extraFlow += lnsFlow[it]* lnsCost[it];
+                arcExtraFrom++;
+            } else if (lnsG.target(it) == extraNode) {
+                extraFlow += lnsFlow[it]* lnsCost[it];
+                arcExtraTo++;
+            } else {
+                flowOutCache += lnsFlow[it]* lnsCost[it];
+                arcOut++;
+            }
+            //LOG("primal calc: flow, cost, cap ",lnsFlow[it],lnsCost[it],lnsCap[it]);
         }
         LOG("primal Val",testVal,0,0);
-
+        LOG("primal cost: in,out,extra ",flowInCache,flowOutCache,extraFlow);
+        LOG("arc counts: in,out,extrato,extrafrom\t"+std::to_string(arcIn),arcOut,arcExtraTo,arcExtraFrom);
 
 
 
@@ -297,6 +323,7 @@ int main(int argc, char* argv[]) {
         }
 
         for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+            bool addedArc = false;
             if(lnsFlow[it]<lnsCap[it]) {
                 // add forward arc
                 const int64_t resSourceId = lnsResMap[lnsG.source(it)];
@@ -304,6 +331,7 @@ int main(int argc, char* argv[]) {
                 curArc = resG.addArc(resG.nodeFromId(resSourceId),
                                      resG.nodeFromId(resTargetId));
                 resLength[curArc] = lnsCost[it];
+                addedArc = true;
             }
             if(lnsFlow[it]>0) {
                 // add reverse arc
@@ -312,8 +340,16 @@ int main(int argc, char* argv[]) {
                 curArc = resG.addArc(resG.nodeFromId(resSourceId),
                                      resG.nodeFromId(resTargetId));
                 resLength[curArc] = -lnsCost[it];
+                addedArc = true;
             }
+            assert(lnsCap[it]>0);
+            assert(addedArc);
         }
+
+        /*for (SmartDigraph::ArcIt it(resG); it!=INVALID; ++it) {
+            //            LOG("resG",resG.id(resG.source(it)),resG.id(resG.target(it)),lnsCost[it]);//resG.id(it),
+            LOG("resG",resLnsMap[resG.source(it)],resLnsMap[resG.target(it)],resLength[it]);
+            }*/
         
         BellSolveType bellsolver(resG, resLength);
         SmartDigraph::NodeMap<double> distResMap(resG);
@@ -330,15 +366,19 @@ int main(int argc, char* argv[]) {
         for (SmartDigraph::NodeIt it(resG); it!=INVALID; ++it) {
             const int64_t lnsNodeId = resLnsMap[it];
             testVal += -distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
-            //    LOG("val",lnsNodeId,-distResMap[it],lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
+            //LOG("3rdval",lnsNodeId,-distResMap[it],lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
+            if(!isfinite(testVal)) {
+                LOG("!!!nan",-distResMap[it],lnsSupplies[lnsG.nodeFromId(lnsNodeId)],-distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
+            }
+
         }
         LOG("3rd not quite dual Val",testVal,0,0);
         
 
         SmartDigraph::ArcMap<double> lnsAlpha3(lnsG);
         for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
-            const int64_t resSourceId = lnsResMap[lnsG.target(it)]; // reverse order
-            const int64_t resTargetId = lnsResMap[lnsG.source(it)];
+            const int64_t resSourceId = lnsResMap[lnsG.source(it)];
+            const int64_t resTargetId = lnsResMap[lnsG.target(it)];
             const double piI = -distResMap[lnsG.nodeFromId(resSourceId)];
             const double piJ = -distResMap[lnsG.nodeFromId(resTargetId)];
             const double cij = lnsCost[it];
@@ -347,7 +387,7 @@ int main(int argc, char* argv[]) {
                 lnsAlpha3[it] = curAlpha;
             else
                 lnsAlpha3[it] = 0;
-            //            LOG("2ndalphas",lnsG.id(it),lnsAlpha3[it],lnsCap[it]);
+            //LOG("3rdalphas",lnsG.id(it),lnsAlpha3[it],lnsCap[it]);
         }
 
         testVal = 0;
@@ -356,9 +396,11 @@ int main(int argc, char* argv[]) {
             const int64_t lnsNodeId = resLnsMap[it];
             testVal += -distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
         }
+
+        // no need to check if extra node contributes to potential sum
+        //        const int64_t eNodeId = lnsResMap[extraNode];
+        //        LOG("check check",-distResMap[resG.nodeFromId(eNodeId)],lnsSupplies[extraNode],-distResMap[resG.nodeFromId(eNodeId)] * lnsSupplies[extraNode]);
         
-        const int64_t eNodeId = lnsResMap[extraNode];
-        LOG("check check",-distResMap[resG.nodeFromId(eNodeId)],lnsSupplies[extraNode],-distResMap[resG.nodeFromId(eNodeId)] * lnsSupplies[extraNode]);
         for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
             //            LOG("2ndalphasl",lnsG.id(it),lnsAlpha3[it],lnsCap[it]);
             if(lnsCap[it] < maxFlowAmount) {
@@ -374,120 +416,9 @@ int main(int argc, char* argv[]) {
         //// test
 
 
-
-
-
-
-
-
-
         return 0;
 
-        /*LOG("---edges---",0,0,0);
-        for (SmartDigraph::ArcIt i(lnsG); i!=INVALID; ++i) {
-            LOG(std::to_string(lnsG.id(lnsG.source(i))),lnsG.id(lnsG.target(i)),flow[i],lnsCap[i]);
-            }*/
 
-        std::unordered_set<int64_t> doneNodes;
-        SmartDigraph::NodeMap<double> lnsPi2(lnsG);
-        SmartDigraph::ArcMap<double> lnsAlpha2(lnsG);
-        SmartDigraph::NodeIt it(lnsG);
-        //        ++it;
-        std::queue<int64_t> lnsQ;
-        lnsPi2[it] = 0;
-        lnsQ.push(lnsG.id(it));
-        doneNodes.insert(lnsG.id(it));
-        while(lnsQ.size()>0) {
-            bool foundTreeArc = false;
-            curNode = lnsG.nodeFromId(lnsQ.front());
-            lnsQ.pop();
-            for (SmartDigraph::OutArcIt o(lnsG, curNode); o!=INVALID; ++o) {
-                curArc = o;
-                //LOG("outarc",lnsG.id(curNode),lnsG.id(curArc),lnsCap[curArc]);
-                if(lnsFlow[curArc]>0 && lnsFlow[curArc]<lnsCap[curArc]) {
-                    // foundTreeArc in outgoing arc
-                    foundTreeArc = true;
-                    const SmartDigraph::Node otherNode = lnsG.target(curArc);
-                    if(doneNodes.count(lnsG.id(otherNode)) == 0) {
-                        // i->j, with pi(j) = pi(i) - cij
-                        lnsPi2[otherNode] = lnsPi2[curNode] - lnsCost[curArc];
-                        lnsQ.push(lnsG.id(otherNode));
-                        doneNodes.insert(lnsG.id(otherNode));
-                    }
-                }
-            }
-            for (SmartDigraph::InArcIt i(lnsG, curNode); i!=INVALID; ++i) {
-                curArc = i;
-                //LOG("inarc",lnsG.id(curNode),lnsFlow[curArc],lnsCap[curArc]);
-                if(lnsFlow[curArc]>0 && lnsFlow[curArc]<lnsCap[curArc]) {
-                    // foundTreeArc in incoming arc
-                    foundTreeArc = true;
-                    const SmartDigraph::Node otherNode = lnsG.source(curArc);
-                    if(doneNodes.count(lnsG.id(otherNode)) == 0) {
-                        // j->i, with pi(i) = pi(j) + cij
-                        lnsPi2[otherNode] = lnsPi2[curNode] + lnsCost[curArc];
-                        lnsQ.push(lnsG.id(otherNode));
-                        doneNodes.insert(lnsG.id(otherNode));
-                    }
-                }
-            }
-            // search for any neighbor node that hasn't been processed yet
-            if(!foundTreeArc) {
-                for (SmartDigraph::OutArcIt o(lnsG, curNode); o!=INVALID; ++o) {
-                    curArc = o;
-                    //LOG("2ndoutarc",lnsG.id(curNode),lnsG.id(curArc),lnsCap[curArc]);
-                    const SmartDigraph::Node otherNode = lnsG.target(curArc);
-                    if(doneNodes.count(lnsG.id(otherNode)) == 0) {
-                        foundTreeArc = true; //force this to be a tree arc
-                        lnsPi2[otherNode] = lnsPi2[curNode] - lnsCost[curArc];
-                        lnsQ.push(lnsG.id(otherNode));
-                        doneNodes.insert(lnsG.id(otherNode));
-                        break;
-                    }
-                }
-            }
-            if(!foundTreeArc) {
-                for (SmartDigraph::InArcIt i(lnsG, curNode); i!=INVALID; ++i) {
-                    curArc = i;
-                    //LOG("2ndinarc",lnsG.id(curNode),lnsFlow[curArc],lnsCap[curArc]);
-                    const SmartDigraph::Node otherNode = lnsG.source(curArc);
-                    if(doneNodes.count(lnsG.id(otherNode)) == 0) {
-                        foundTreeArc = true; //force this to be a tree arc
-                        lnsPi2[otherNode] = lnsPi2[curNode] + lnsCost[curArc];
-                        lnsQ.push(lnsG.id(otherNode));
-                        doneNodes.insert(lnsG.id(otherNode));
-                        break;
-                    }
-                }
-            }
-            if(!foundTreeArc) {
-                std::cerr << "did not find tree arc, this should be the last node, then" << std::endl;
-            }
-        }
-
-
-
-        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
-            const double piI = lnsPi2[lnsG.source(it)];
-            const double piJ = lnsPi2[lnsG.target(it)];
-            const double cij = lnsCost[it];
-            const double curAlpha = piI - piJ - cij;
-            if(curAlpha > 0)
-                lnsAlpha2[it] = curAlpha;
-            else
-                lnsAlpha2[it] = 0;
-        }
-
-        testVal = 0;
-        for (SmartDigraph::NodeIt it(lnsG); it!=INVALID; ++it) {
-            testVal += lnsPi2[it] * lnsSupplies[it];
-        }
-        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
-            testVal -= lnsAlpha2[it] * lnsCap[it];
-        }
-        LOG("2nd dual Val",testVal,0,0);
-
-        return 0;
 
     }
 
