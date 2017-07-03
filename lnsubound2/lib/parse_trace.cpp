@@ -28,7 +28,7 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
 
     // we consider (id,size) as unique identification of an object (sizes can change, but then it's a different object)
     // lastSeen maps (id,size) to (nodeId,traceIndex) of the last time this object was seen
-    std::map<std::pair<uint64_t, uint64_t>, std::pair<uint64_t, int> > lastSeen;
+    std::unordered_map<std::pair<uint64_t, uint64_t>, std::pair<uint64_t, int> > lastSeen;
     SmartDigraph::Arc curArc;
     SmartDigraph::Node curNode = g.addNode(); // initial node
     SmartDigraph::Node prevNode;

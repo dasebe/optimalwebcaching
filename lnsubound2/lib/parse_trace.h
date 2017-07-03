@@ -2,6 +2,19 @@
 #include <string>
 #include <lemon/smart_graph.h>
 
+// uncomment to enable cache debugging:
+#define CDEBUG 1
+// util for debug
+#ifdef CDEBUG
+inline void logMessage(std::string m, double x, double y, double z) {
+    std::cerr << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
+}
+#define LOG(m,x,y,z) logMessage(m,x,y,z)
+#else
+#define LOG(m,x,y,z)
+#endif
+
+
 using namespace lemon;
 
 // trace entry
