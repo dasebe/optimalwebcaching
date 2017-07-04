@@ -18,15 +18,15 @@ typedef BellmanFord<SmartDigraph, SmartDigraph::ArcMap<double>> BellSolveType;
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 4) {
-        std::cerr << argv[0] << " traceFile cacheSize maxEjectSize" << std::endl;
+    if (argc != 5) {
+        std::cerr << argv[0] << " traceFile cacheSize maxEjectSize resultPath" << std::endl;
         return 1;
     }
 
     std::string path(argv[1]);
     int64_t cacheSize(atoll(argv[2]));
     uint64_t maxEjectSize(std::stoull(argv[3]));
-    //    std::string resultPath(argv[4]);
+    std::string resultPath(argv[4]);
 
     // parse trace file
     std::vector<trEntry> trace;
@@ -445,6 +445,20 @@ int main(int argc, char* argv[]) {
 
     std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
     std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
+
+    // output decision variables and utilities
+    std::ofstream resultfile(resultPath);
+
+    for(auto & it: trace) {
+        resultfile << it.origTime << " "
+                   << it.id << " " << it.size << " ";
+        if(it.hasNext) {
+            resultfile << 1-it.lcost << "\n";
+        } else {
+            resultfile << 0 << "\n";
+        }
+    }
+
 
     return 0;
 }
