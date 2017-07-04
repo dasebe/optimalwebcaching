@@ -22,8 +22,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::cerr << "I'm started and still happy" << std::endl;
-
     std::string path(argv[1]);
     int64_t cacheSize(atoll(argv[2]));
     uint64_t maxEjectSize(std::stoull(argv[3]));
@@ -33,7 +31,7 @@ int main(int argc, char* argv[]) {
     std::vector<trEntry> trace;
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
-    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
+    OLOG("scanned trace",totalReqc,totalUniqC,0);
 
     // create mcf instance
     SmartDigraph g; // mcf graph
