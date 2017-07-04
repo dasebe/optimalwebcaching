@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
             // calc max flow amount as sum of pos supplies
             traceIndex++;
             // save half time to move forward for loop
-            if(traceIndex-kmin<=maxEjectSize/2) {
+            if(traceIndex-kmin<=maxEjectSize) {
                 traceHalfIndex = traceIndex;
             }
         }
