@@ -43,7 +43,7 @@ struct trEntry {
     const uint64_t id;
     const uint64_t size;
     const uint64_t origTime;
-    double dvar;
+    double lcost;
     bool hasNext;
     int64_t outerArcId;
     int64_t innerArcId;
@@ -51,7 +51,7 @@ struct trEntry {
         : id(nid),
           size(nsize),
           origTime(ntime),
-          dvar(0),
+          lcost(0),
           hasNext(false),
           outerArcId(-1),
           innerArcId(-1)

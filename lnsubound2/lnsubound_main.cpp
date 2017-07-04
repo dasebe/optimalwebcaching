@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <queue>
+#include <tuple>
 #include <math.h>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
@@ -105,7 +106,7 @@ int main(int argc, char* argv[]) {
         uint64_t extraArcCount = 0;
         // LNS iteration step state
         std::unordered_set<int64_t> ejectNodes;
-        std::unordered_map<std::pair<uint64_t, uint64_t>, std::pair<int64_t, int64_t> > lastSeen;
+        std::unordered_map<std::pair<uint64_t, uint64_t>, std::tuple<int64_t, int64_t, size_t> > lastSeen;
         // graph min cost flow information
         SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
         SmartDigraph::ArcMap<double> lnsCost(lnsG); // mcf costs
@@ -117,6 +118,7 @@ int main(int argc, char* argv[]) {
         SmartDigraph::NodeMap<int64_t> lnsToGNodeId(lnsG);
         lnsToGNodeId[extraNode] = -1;
         SmartDigraph::ArcMap<int64_t> lnsToGArcId(lnsG);
+        std::unordered_map<int64_t, size_t > lnsIdToTraceIndex;
 
         // mark nodes for the ejection set
         traceIndex = kmin;
@@ -141,13 +143,13 @@ int main(int argc, char* argv[]) {
             // calc max flow amount as sum of pos supplies
             traceIndex++;
             // save half time to move forward for loop
-            if(traceIndex-kmin<=maxEjectSize) {
+            if(traceIndex-kmin<=maxEjectSize/2) {
                 traceHalfIndex = traceIndex;
             }
         }
         assert(maxFlowAmount>0);
         assert(arcId >= 0);
-        GLOG("ejectSize",kmin,maxEjectSize,ejectNodes.size());
+        GLOG("ejectSize",kmin,traceIndex,ejectNodes.size());
 
 #ifdef GDEBUG
         for(auto it: ejectNodes) {
@@ -156,6 +158,7 @@ int main(int argc, char* argv[]) {
 #endif
         GLOG("trIndex",kmin,traceIndex,0);
 
+        uint64_t localUniqCount = 0;
         for(size_t i=kmin; i<traceIndex; i++) {
             const trEntry & curEntry = trace[i];
             auto curIdSize = std::make_pair(curEntry.id,curEntry.size);
@@ -164,23 +167,23 @@ int main(int argc, char* argv[]) {
             // create outer arc, if one is saved for this curIdSize
             if(lastSeen.count(curIdSize) > 0) { // 
                 const uint64_t size = curEntry.size;
-                const SmartDigraph::Node lastReq = lnsG.nodeFromId(lastSeen[curIdSize].first);
+                const SmartDigraph::Node lastReq = lnsG.nodeFromId(std::get<0>(lastSeen[curIdSize]));
                 curArc = lnsG.addArc(lastReq,curNode);
                 arcCount++;
                 lnsCap[curArc] = size;
                 lnsCost[curArc] = 1/static_cast <double>(size);
                 lnsSupplies[lastReq] += size;
                 lnsSupplies[curNode] -= size;
-                assert(lastSeen[curIdSize].second!=-1);
-                lnsToGArcId[curArc] = lastSeen[curIdSize].second;
+                assert(std::get<1>(lastSeen[curIdSize]) != -1);
+                lnsToGArcId[curArc] = std::get<1>(lastSeen[curIdSize]);
+                lnsIdToTraceIndex[lnsG.id(curArc)] = std::get<2>(lastSeen[curIdSize]);
                 LLOG("lastseen--",i,curEntry.id,curEntry.size);
                 lastSeen.erase(curIdSize);
             }
-#ifdef LDEBUG
             else {
+                localUniqCount++;
                 LLOG("lastseen()",i,curEntry.id,curEntry.size);
             }
-#endif
 
             // if this curIdSize has another request in the future, create graph node
             if(curEntry.hasNext) {
@@ -197,7 +200,7 @@ int main(int argc, char* argv[]) {
                 if(ejectNodes.count(iOutNodeId)>0) {
                     LLOG("node must be part",iOutNodeId,0,0);
                     LLOG("lastseen++",i,curEntry.id,curEntry.size);
-                    lastSeen[curIdSize] = std::make_pair(lnsG.id(curNode),g.id(curArc));
+                    lastSeen[curIdSize] = std::make_tuple(lnsG.id(curNode),g.id(curArc),i);
                 } else {
                     LLOG("not in ejection set",iOutNodeId,0,0);
                     // not in ejection set
@@ -233,6 +236,7 @@ int main(int argc, char* argv[]) {
                     // reset extra arc flag
                     extraArcFlag = false;
                     extraArcCost = highestCost+1;
+                    lnsIdToTraceIndex[lnsG.id(curArc)] = i;
                 }
 
                 // iterate over all incoming arcs and derive cost of additional arc
@@ -256,6 +260,7 @@ int main(int argc, char* argv[]) {
                     extraArcCount++;
                     lnsCost[curArc] = extraArcCost;
                     lnsCap[curArc] = maxFlowAmount;
+                    lnsIdToTraceIndex[lnsG.id(curArc)] = i;
                 }
 
                 // add inner node
@@ -274,6 +279,7 @@ int main(int argc, char* argv[]) {
                 lnsCost[curArc] = 0;
                 assert(curEntry.innerArcId!=-1);
                 lnsToGArcId[curArc] = curEntry.innerArcId;
+                lnsIdToTraceIndex[lnsG.id(curArc)] = i;
                 LLOG("curEA",i,curEntry.id,lnsG.id(curNode));
             }
 
@@ -281,7 +287,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef LDEBUG
         for(auto it: lastSeen) {
-            LLOG("left-over lastSeen",it.first.first,it.first.second,it.second.first);
+            LLOG("left-over lastSeen",it.first.first,it.first.second,std::get<0>(it.second));
         }
 #endif
         assert(lastSeen.size()==0);
@@ -403,6 +409,10 @@ int main(int argc, char* argv[]) {
                 alpha[g.arcFromId(lnsToGArcId[aIt])] = lnsAlpha3[aIt];
                 // update local dual solution value
                 localDualValue -= lnsAlpha3[aIt] * lnsCap[aIt];
+                // update dvar/flow mapping in trace vector by calc based on flow in outer arcs
+                assert(lnsIdToTraceIndex.count(lnsG.id(aIt)) > 0);
+                trEntry & mapEntry = trace[lnsIdToTraceIndex[lnsG.id(aIt)]];
+                mapEntry.lcost += static_cast<double>(lnsFlow[aIt]) * lnsCost[aIt];
                 // logging output
                 GLOG("3rdalphas",lnsG.id(aIt),lnsAlpha3[aIt],lnsCap[aIt]);
             }
@@ -410,13 +420,21 @@ int main(int argc, char* argv[]) {
 
         globalDualValue += localDualValue;
 
-        OLOG("end dualval",localDualValue,globalDualValue,totalReqc-totalUniqC-globalDualValue);
+        OLOG("end dualval",localDualValue,0,localUniqCount);
     }
 
-    OLOG("final dual Val",globalDualValue,0,totalReqc-totalUniqC-globalDualValue);
+    double hitCount = 0;
+    for(auto & it: trace) {
+        //lcost is not set if no hasNext!!
+        if(it.hasNext) {
+            hitCount += 1-it.lcost;
+        }
+    }
 
-    std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << totalReqc-totalUniqC-globalDualValue << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(globalDualValue)+totalUniqC)/totalReqc << std::endl;
-    std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << totalReqc-totalUniqC-globalDualValue << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(globalDualValue)+totalUniqC)/totalReqc << std::endl;
+    OLOG("final dual Val",globalDualValue,hitCount,totalReqc-totalUniqC-globalDualValue);
+
+    std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
+    std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
 
     return 0;
 }
