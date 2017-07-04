@@ -2,16 +2,30 @@
 #include <string>
 #include <lemon/smart_graph.h>
 
-// uncomment to enable cache debugging:
-#define CDEBUG 1
+// uncomment to enable graph debugging:
+//#define GDEBUG 1
+// uncomment to enable lastSeen debugging:
+//#define LDEBUG 1
+// uncomment to enable other debugging:
+#define ODEBUG 1
 // util for debug
-#ifdef CDEBUG
 inline void logMessage(std::string m, double x, double y, double z) {
     std::cerr << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
 }
-#define LOG(m,x,y,z) logMessage(m,x,y,z)
+#ifdef GDEBUG
+#define GLOG(m,x,y,z) logMessage(m,x,y,z)
 #else
-#define LOG(m,x,y,z)
+#define GLOG(m,x,y,z)
+#endif
+#ifdef LDEBUG
+#define LLOG(m,x,y,z) logMessage(m,x,y,z)
+#else
+#define LLOG(m,x,y,z)
+#endif
+#ifdef ODEBUG
+#define OLOG(m,x,y,z) logMessage(m,x,y,z)
+#else
+#define OLOG(m,x,y,z)
 #endif
 
 
