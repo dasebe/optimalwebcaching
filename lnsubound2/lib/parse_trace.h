@@ -12,7 +12,7 @@
 //#define PIDEBUG 1
 // util for debug
 inline void logMessage(std::string m, double x, double y, double z) {
-    std::cerr << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
+    std::cout << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
 }
 #ifdef GDEBUG
 #define GLOG(m,x,y,z) logMessage(m,x,y,z)
