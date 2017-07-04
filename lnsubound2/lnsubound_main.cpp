@@ -52,15 +52,15 @@ int main(int argc, char* argv[]) {
     SmartDigraph::NodeMap<double> pi(g);
     SmartDigraph::ArcMap<double> alpha(g);
 
+    
     for (SmartDigraph::NodeIt n(g); n!=INVALID; ++n) {
         ++nodeCount;
         pi[n] = 0;
         dualSol += pi[n] * supplies[n];
         LOG("g node",g.id(n),0,0);
     }
-    std::cerr << "created graph with ";
-    std::cerr << nodeCount << " nodes ";
-    for (SmartDigraph::ArcIt a(g); a != INVALID; ++a) {
+    SmartDigraph::ArcIt a(g);
+    do {
         ++arcCount;
         alpha[a] = 0;
         dualSol -= alpha[a] * cap[a];
@@ -70,10 +70,11 @@ int main(int argc, char* argv[]) {
             highestCost = curCost;
         }
         LOG("g arc",g.id(g.source(a)),g.id(g.target(a)),cost[a]);
-    }
-    std::cerr << arcCount << " arcs with dual cost " << dualSol << std::endl;
-
-    std::cerr << std::endl << std::endl;
+    } while (++a != INVALID);
+    std::cerr << "created graph with "
+              << nodeCount << " nodes "
+              << arcCount << " arcs with dual cost "
+              << dualSol << std::endl << std::endl;
 
     // max ejection size mustn't be larger than actual trace
     if(maxEjectSize > totalReqc - totalUniqC) {
@@ -100,7 +101,6 @@ int main(int argc, char* argv[]) {
         arcCount = 0;
         uint64_t extraArcCount = 0;
         // LNS iteration step state
-        std::vector<size_t> ejectSet;
         std::unordered_set<int64_t> ejectNodes;
         std::unordered_map<std::pair<uint64_t, uint64_t>, int64_t > lastSeen;
         //std::unordered_map<int64_t, int64_t> lastSeen;
@@ -113,21 +113,22 @@ int main(int argc, char* argv[]) {
         SmartDigraph::NodeMap<double> lnsPi(lnsG);
         // to map back results to g graph
         SmartDigraph::NodeMap<int64_t> lnsToGNodeId(lnsG);
+        lnsToGNodeId[extraNode] = -1;
         SmartDigraph::ArcMap<int64_t> lnsToGArcId(lnsG);
 
         // mark nodes for the ejection set
         traceIndex = kmin;
         arcId = -1;
         maxFlowAmount = 0;
-        while(ejectSet.size()<maxEjectSize && traceIndex<trace.size()) {
+        while(ejectNodes.size()<=maxEjectSize && traceIndex<trace.size()) {
             const trEntry & curEntry = trace[traceIndex];
             //            LOG("lnsG",traceIndex,curEntry.hasNext,trace.size());
             if(curEntry.hasNext) {
-                ejectSet.push_back(traceIndex);
-                LOG("ejectSet",traceIndex,0,0);
                 arcId = curEntry.innerArcId;
-                const int64_t ejNodeId = g.id(g.source(g.arcFromId(arcId)));
-                ejectNodes.insert(ejNodeId);
+                const int64_t ejNodeIdS = g.id(g.source(g.arcFromId(arcId)));
+                ejectNodes.insert(ejNodeIdS);
+                const int64_t ejNodeIdT = g.id(g.target(g.arcFromId(arcId)));
+                ejectNodes.insert(ejNodeIdT);
                 // calc max flow amount as sum of pos supplies
                 maxFlowAmount += curEntry.size;
             }
@@ -135,113 +136,24 @@ int main(int argc, char* argv[]) {
         }
         assert(maxFlowAmount>0);
         assert(arcId >= 0);
-        LOG("ejS",kmin,maxEjectSize,ejectSet.size());
+        LOG("ejS",kmin,maxEjectSize,ejectNodes.size());
 
-        // exception for last iteration
-        if(traceIndex == trace.size()) {
-            LOG("et",traceIndex,trace.size(),0);
-            size_t i;
-            for(i=traceIndex-1; !(trace[i].hasNext) && i>0;i--) {
-            }
-            arcId = trace[i].innerArcId;
-            const int64_t ejNodeId1 = g.id(g.source(g.arcFromId(arcId)));
-            const int64_t ejNodeId2 = g.id(g.target(g.arcFromId(arcId)));
-            LOG("e node",ejNodeId1,ejNodeId2,0);
-            ejectNodes.insert(ejNodeId2);
+        for(auto it: ejectNodes) {
+            LOG("lns g node",it,0,0);
         }
 
-        /*        for(auto it: ejectNodes) {
-            LOG("lns g node",it,0,0);
-            }*/
+        LOG("trIndex",kmin,traceIndex,0);
 
-        LOG("ejS",kmin,maxEjectSize,ejectSet.size());
-
-        // maybe iterate as in the parse script
-        for(size_t i: ejectSet) {
-            trEntry & curEntry = trace[i];
+        for(size_t i=kmin; i<traceIndex; i++) {
+            const trEntry & curEntry = trace[i];
             auto curIdSize = std::make_pair(curEntry.id,curEntry.size);
-            // reset extra arc flag
-            extraArcFlag = false;
-            extraArcCost = highestCost+1;
+            LOG("curE",i,curEntry.id,curEntry.hasNext);
 
-            // handle outer arc
-            arcId = curEntry.outerArcId;
-
-            // remember current node for outer arcid if in ejection set
-            curArc = g.arcFromId(arcId);
-            const int64_t iOutNodeId = g.id(g.target(curArc));
-            LOG("iOutnodeid",iOutNodeId,0,arcId);
-            if(ejectNodes.count(iOutNodeId)>0) {
-                LOG("lastseen+iOutnodeid",iOutNodeId,0,arcId);
-                lastSeen[curIdSize] = lnsG.id(curNode);
-            } else {
-                LOG("not in ejection set",iOutNodeId,0,0);
-                // not in ejection set
-                // c^tile_ij = cij + aij + pi
-                extraArcCost = cost[curArc] + alpha[curArc] + pi[g.target(curArc)];
-                extraArcFlag = true;
-            }
-
-            // handle inner arc
-            arcId = curEntry.innerArcId;
-
-            // if inner arc is going out of ejection set
-            curArc = g.arcFromId(arcId);
-            const int64_t oOutNodeId = g.id(g.target(curArc));
-            if(ejectNodes.count(oOutNodeId)==0) {
-                LOG("not in ejection set",oOutNodeId,0,0);
-                // not in ejection set
-                // c^tile_ij = cij + aij + pi
-                const double curExtraArcCost = cost[curArc] + alpha[curArc] + pi[g.target(curArc)];
-                // min over all extra arc costs
-                if(curExtraArcCost < extraArcCost) {
-                    extraArcCost = curExtraArcCost;
-                }
-                extraArcFlag = true;
-            }
-
-            // if extra arc flag, create extra arc
-            if(extraArcFlag) {
-                curArc = lnsG.addArc(extraNode,curNode);
-                extraArcCount++;
-                lnsCost[curArc] = extraArcCost;
-                lnsCap[curArc] = maxFlowAmount;
-                // reset extra arc flag
-                extraArcFlag = false;
-                extraArcCost = highestCost+1;
-            }
-
-            // iterate over all incoming arcs and derive cost of additional arc
-            const SmartDigraph::Node lNode = g.source(g.arcFromId(arcId));
-            for (SmartDigraph::InArcIt a(g, lNode); a!=INVALID; ++a) {
-                const SmartDigraph::Node incArcNode = g.source(a);
-                const int64_t incArcNodeId = g.id(incArcNode);
-                if(ejectNodes.count(incArcNodeId)==0) {
-                    // not in ejection set
-                    // c^tile_ij = cij + aij - pi
-                    const double curCost = cost[a] + alpha[a] - pi[incArcNode];
-                    if(curCost < extraArcCost) {
-                        extraArcCost = curCost;
-                    }
-                    extraArcFlag = true;
-                }
-            }
-            if(extraArcFlag) {
-                // add additional arc to extraNode
-                curArc = lnsG.addArc(curNode,extraNode);
-                extraArcCount++;
-                lnsCost[curArc] = extraArcCost;
-                lnsCap[curArc] = maxFlowAmount;
-            }
-
-
-            // create all the original graph arcs
-
-            // create outer arc
-            const int64_t lNodeId = g.id(lNode);
-            const uint64_t size = curEntry.size;
+            // create outer arc, if one is saved for this curIdSize
             if(lastSeen.count(curIdSize) > 0) {
+                const uint64_t size = curEntry.size;
                 const SmartDigraph::Node lastReq = lnsG.nodeFromId(lastSeen[curIdSize]);
+                LOG("curEL",i,lnsG.id(lastReq),lnsG.id(curNode));
                 curArc = lnsG.addArc(lastReq,curNode);
                 arcCount++;
                 lnsCap[curArc] = size;
@@ -249,50 +161,121 @@ int main(int argc, char* argv[]) {
                 lnsSupplies[lastReq] += size;
                 lnsSupplies[curNode] -= size;
                 lnsToGArcId[curArc] = curEntry.outerArcId;
+                LOG("lastseen--",i,lnsToGNodeId[lastReq],lnsToGNodeId[curNode]);
                 lastSeen.erase(curIdSize);
+            } /*else {
+                LOG("lastseen()",i,curEntry.id,curEntry.size);
+                }*/
+            
+            // if this curIdSize has another request in the future, create graph node
+            if(curEntry.hasNext) {
+                // reset extra arc flag
+                extraArcFlag = false;
+                extraArcCost = highestCost+1;
+
+                // handle outer arc
+                arcId = curEntry.outerArcId;
+
+                // remember current node for outer arcid if in ejection set
+                curArc = g.arcFromId(arcId);
+                const int64_t iOutNodeId = g.id(g.target(curArc));
+                if(ejectNodes.count(iOutNodeId)>0) {
+                    LOG("lastseen++",i,lnsToGNodeId[curNode],curEntry.id);
+                    lastSeen[curIdSize] = lnsG.id(curNode);
+                } else {
+                    LOG("not in ejection set",iOutNodeId,0,0);
+                    // not in ejection set
+                    // c^tile_ij = cij + aij + pi
+                    extraArcCost = cost[curArc] + alpha[curArc] + pi[g.target(curArc)];
+                    extraArcFlag = true;
+                }
+
+                // handle inner arc
+                arcId = curEntry.innerArcId;
+
+                // if inner arc is going out of ejection set
+                curArc = g.arcFromId(arcId);
+                const int64_t oOutNodeId = g.id(g.target(curArc));
+                if(ejectNodes.count(oOutNodeId)==0) {
+                    LOG("not in ejection set",oOutNodeId,0,0);
+                    // not in ejection set
+                    // c^tile_ij = cij + aij + pi
+                    const double curExtraArcCost = cost[curArc] + alpha[curArc] + pi[g.target(curArc)];
+                    // min over all extra arc costs
+                    if(curExtraArcCost < extraArcCost) {
+                        extraArcCost = curExtraArcCost;
+                    }
+                    extraArcFlag = true;
+                }
+
+                // if extra arc flag, create extra arc
+                if(extraArcFlag) {
+                    curArc = lnsG.addArc(extraNode,curNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost;
+                    lnsCap[curArc] = maxFlowAmount;
+                    // reset extra arc flag
+                    extraArcFlag = false;
+                    extraArcCost = highestCost+1;
+                }
+
+                // iterate over all incoming arcs and derive cost of additional arc
+                const SmartDigraph::Node lNode = g.source(g.arcFromId(arcId));
+                for (SmartDigraph::InArcIt a(g, lNode); a!=INVALID; ++a) {
+                    const SmartDigraph::Node incArcNode = g.source(a);
+                    const int64_t incArcNodeId = g.id(incArcNode);
+                    if(ejectNodes.count(incArcNodeId)==0) {
+                        // not in ejection set
+                        // c^tile_ij = cij + aij - pi
+                        const double curCost = cost[a] + alpha[a] - pi[incArcNode];
+                        if(curCost < extraArcCost) {
+                            extraArcCost = curCost;
+                        }
+                        extraArcFlag = true;
+                    }
+                }
+                if(extraArcFlag) {
+                    // add additional arc to extraNode
+                    curArc = lnsG.addArc(curNode,extraNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost;
+                    lnsCap[curArc] = maxFlowAmount;
+                }
+
+                // add inner node
+                prevNode = curNode;
+                curNode = lnsG.addNode(); // next node
+                nodeCount++;
+
+                // save mapping of curNode to g graph node
+                lnsToGNodeId[prevNode] = g.id(g.source(g.arcFromId(arcId)));
+                lnsToGNodeId[curNode] = g.id(g.target(g.arcFromId(arcId)));
+
+                // create inner arc
+                curArc = lnsG.addArc(prevNode,curNode);
+                arcCount++;
+                lnsCap[curArc] = cacheSize; 
+                lnsCost[curArc] = 0;
+                lnsToGArcId[curArc] = curEntry.innerArcId;
+                LOG("curEA",i,curEntry.id,lnsG.id(curNode));
             }
 
-            // save mapping of curNode to g graph node
-            lnsToGNodeId[curNode] = lNodeId;
-            
-            // inner arc
-            prevNode = curNode;
-            curNode = lnsG.addNode(); // next node
-            nodeCount++;
-            curArc = lnsG.addArc(prevNode,curNode);
-            arcCount++;
-            lnsCap[curArc] = cacheSize; 
-            lnsCost[curArc] = 0;
-            lnsToGArcId[curArc] = curEntry.innerArcId;
-
-            // do we need to do second node??
-
         }
 
-        LOG("are there no left lastSeens?",lastSeen.size(),0,0);
-        
-        // there will be outer arcs that remain to be added
         for(auto it: lastSeen) {
-            const uint64_t size = it.first.second;
-            LOG("adding lastSeen remainder",it.first.first,size,it.second);
-            const SmartDigraph::Node lastReq = lnsG.nodeFromId(it.second);
-            curArc = lnsG.addArc(lastReq,curNode);
-            arcCount++;
-            lnsCap[curArc] = size;
-            lnsCost[curArc] = 1/static_cast <double>(size);
-            lnsSupplies[lastReq] += size;
-            lnsSupplies[curNode] -= size;
-            // BUG FIXME
-            //lnsToGArcId[curArc] = curEntry.outerArcId;
+            LOG("lastSeen",it.first.first,it.first.second,it.second);
         }
-
+        assert(lastSeen.size()==0);
 
         LOG("extranode lastnode",lnsG.id(extraNode),lnsG.id(curNode),0);
-        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+        SmartDigraph::ArcIt aIt(lnsG);
+        do {
             LOG("l arcs",
-                lnsToGNodeId[lnsG.source(it)],
-                lnsToGNodeId[lnsG.target(it)],lnsCost[it]);
-        }
+                lnsToGNodeId[lnsG.source(aIt)],
+                lnsToGNodeId[lnsG.target(aIt)],lnsCost[aIt]);
+        } while (++aIt!=INVALID);
+
+
 
         LOG("createdLNS",nodeCount,arcCount,extraArcCount);
         double solval = solveMCF(lnsG, lnsCap, lnsCost, lnsSupplies, lnsFlow, 4, lnsPi);
@@ -306,35 +289,37 @@ int main(int argc, char* argv[]) {
         SmartDigraph::NodeMap<int64_t> lnsResMap(lnsG);
         SmartDigraph::NodeMap<int64_t> resLnsMap(resG);
         SmartDigraph::ArcMap<double> resLength(resG);
-        for (SmartDigraph::NodeIt it(lnsG); it!=INVALID; ++it) {
-            curNode = resG.addNode();
-            lnsResMap[it] = resG.id(curNode);
-            resLnsMap[curNode] = lnsG.id(it);
-        }
 
-        for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {
+        SmartDigraph::NodeIt nIt(lnsG);
+        do {
+            curNode = resG.addNode();
+            lnsResMap[nIt] = resG.id(curNode);
+            resLnsMap[curNode] = lnsG.id(nIt);
+        } while (++nIt!=INVALID);
+
+        aIt = SmartDigraph::ArcIt(lnsG);
             bool addedArc = false;
-            if(lnsFlow[it]<lnsCap[it]) {
+            if(lnsFlow[aIt]<lnsCap[aIt]) {
                 // add forward arc
-                const int64_t resSourceId = lnsResMap[lnsG.source(it)];
-                const int64_t resTargetId = lnsResMap[lnsG.target(it)];
+                const int64_t resSourceId = lnsResMap[lnsG.source(aIt)];
+                const int64_t resTargetId = lnsResMap[lnsG.target(aIt)];
                 curArc = resG.addArc(resG.nodeFromId(resSourceId),
                                      resG.nodeFromId(resTargetId));
-                resLength[curArc] = lnsCost[it];
+                resLength[curArc] = lnsCost[aIt];
                 addedArc = true;
             }
-            if(lnsFlow[it]>0) {
+            if(lnsFlow[aIt]>0) {
                 // add reverse arc
-                const int64_t resSourceId = lnsResMap[lnsG.target(it)]; // reverse order
-                const int64_t resTargetId = lnsResMap[lnsG.source(it)];
+                const int64_t resSourceId = lnsResMap[lnsG.target(aIt)]; // reverse order
+                const int64_t resTargetId = lnsResMap[lnsG.source(aIt)];
                 curArc = resG.addArc(resG.nodeFromId(resSourceId),
                                      resG.nodeFromId(resTargetId));
-                resLength[curArc] = -lnsCost[it];
+                resLength[curArc] = -lnsCost[aIt];
                 addedArc = true;
             }
-            assert(lnsCap[it]>0);
+            assert(lnsCap[aIt]>0);
             assert(addedArc);
-        }
+        } while (++aIt!=INVALID);
 
         /*for (SmartDigraph::ArcIt it(resG); it!=INVALID; ++it) {
             //            LOG("resG",resG.id(resG.source(it)),resG.id(resG.target(it)),lnsCost[it]);//resG.id(it),
@@ -354,6 +339,10 @@ int main(int argc, char* argv[]) {
 
         testVal = 0;
         // pi sum part
+        SmartDigraph::NodeIt nIt(lnsG);
+        do {
+
+
         for (SmartDigraph::NodeIt it(resG); it!=INVALID; ++it) {
             const int64_t lnsNodeId = resLnsMap[it];
             testVal += -distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
@@ -361,8 +350,8 @@ int main(int argc, char* argv[]) {
             if(!isfinite(testVal)) {
                 LOG("!!!nan",-distResMap[it],lnsSupplies[lnsG.nodeFromId(lnsNodeId)],-distResMap[it] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
             }
-
         }
+        
         // alpha sum part
         SmartDigraph::ArcMap<double> lnsAlpha3(lnsG);
         for (SmartDigraph::ArcIt it(lnsG); it!=INVALID; ++it) {

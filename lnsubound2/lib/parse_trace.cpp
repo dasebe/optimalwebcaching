@@ -1,5 +1,6 @@
 //#include <iostream>
 #include <fstream>
+#include <cassert>
 #include <map>
 #include <unordered_map>
 #include <tuple>
@@ -50,6 +51,7 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             supplies[lastReq] += size;
             supplies[curNode] -= size;
             trace[lastSeen[std::make_pair(id,size)].first].outerArcId = g.id(curArc);
+            lastSeen.erase(std::make_pair(id,size));
         }
         // second: if there is another request for this object
         if(curEntry.hasNext) {
@@ -64,6 +66,8 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             curEntry.innerArcId = g.id(curArc);
         }
     }
+
+    assert(lastSeen.size()==0);
 
     return curNode;
 }
