@@ -8,6 +8,7 @@
 #include <queue>
 #include <tuple>
 #include <math.h>
+#include <chrono>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
@@ -91,9 +92,11 @@ int main(int argc, char* argv[]) {
     size_t traceIndex=0, traceHalfIndex = 0;
     int64_t ejNodeIdT;
     long double localDualValue, globalDualValue=0;
+    std::chrono::high_resolution_clock::time_point ts, tg, tmcf, tdone;
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
+        ts = std::chrono::high_resolution_clock::now();
         OLOG("start config",kmin,traceIndex,maxEjectSize);
         // LNS graph structure
         SmartDigraph lnsG; // mcf graph
@@ -301,10 +304,12 @@ int main(int argc, char* argv[]) {
         } while (++aIt!=INVALID);
 #endif
 
+        tg = std::chrono::high_resolution_clock::now();
         GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
         // solve the local MCF
         solveMCF(lnsG, lnsCap, lnsCost, lnsSupplies, lnsFlow, 4, lnsPi);
+        tmcf = std::chrono::high_resolution_clock::now();
 
         // recompute node potentials based on solved flow
         
@@ -418,7 +423,14 @@ int main(int argc, char* argv[]) {
 
         globalDualValue += localDualValue;
 
+        tdone = std::chrono::high_resolution_clock::now();
         OLOG("end dualval",localDualValue,0,localUniqCount);
+        OLOG("timings",
+             std::chrono::duration_cast<std::chrono::duration<double>>(tg-ts).count(),
+             std::chrono::duration_cast<std::chrono::duration<double>>(tmcf-tg).count(),
+             std::chrono::duration_cast<std::chrono::duration<double>>(tdone-tmcf).count()
+             );
+             
     }
 
     double hitCount = 0;
