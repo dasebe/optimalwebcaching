@@ -90,6 +90,7 @@ int main(int argc, char* argv[]) {
     double extraArcCost;
     bool extraArcFlag;
     size_t traceIndex;
+    int64_t ejNodeIdT;
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceIndex - maxEjectSize/2) {
@@ -102,8 +103,7 @@ int main(int argc, char* argv[]) {
         uint64_t extraArcCount = 0;
         // LNS iteration step state
         std::unordered_set<int64_t> ejectNodes;
-        std::unordered_map<std::pair<uint64_t, uint64_t>, int64_t > lastSeen;
-        //std::unordered_map<int64_t, int64_t> lastSeen;
+        std::unordered_map<std::pair<uint64_t, uint64_t>, std::pair<int64_t, int64_t> > lastSeen;
         // graph min cost flow information
         SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
         SmartDigraph::ArcMap<double> lnsCost(lnsG); // mcf costs
@@ -123,18 +123,21 @@ int main(int argc, char* argv[]) {
         while(ejectNodes.size()<=maxEjectSize && traceIndex<trace.size()) {
             const trEntry & curEntry = trace[traceIndex];
             GLOG("lnsG",traceIndex,curEntry.hasNext,trace.size());
+            
             if(curEntry.hasNext) {
                 arcId = curEntry.innerArcId;
                 const int64_t ejNodeIdS = g.id(g.source(g.arcFromId(arcId)));
                 ejectNodes.insert(ejNodeIdS);
-                // if at end of trace, we also must add the last node
-                if(traceIndex==trace.size()-1) {
-                    const int64_t ejNodeIdT = g.id(g.target(g.arcFromId(arcId)));
-                    ejectNodes.insert(ejNodeIdT);
-                }
-                // calc max flow amount as sum of pos supplies
+                // if at end of trace, we also must add the last node so save it
+                ejNodeIdT = g.id(g.target(g.arcFromId(arcId)));
                 maxFlowAmount += curEntry.size;
             }
+            // at end of trace, so add last node
+            if(traceIndex==trace.size()-1) {
+                OLOG("TRIGGERED2",0,0,0);
+                ejectNodes.insert(ejNodeIdT);
+            }
+            // calc max flow amount as sum of pos supplies
             traceIndex++;
         }
         assert(maxFlowAmount>0);
@@ -156,15 +159,15 @@ int main(int argc, char* argv[]) {
             // create outer arc, if one is saved for this curIdSize
             if(lastSeen.count(curIdSize) > 0) { // 
                 const uint64_t size = curEntry.size;
-                const SmartDigraph::Node lastReq = lnsG.nodeFromId(lastSeen[curIdSize]);
+                const SmartDigraph::Node lastReq = lnsG.nodeFromId(lastSeen[curIdSize].first);
                 curArc = lnsG.addArc(lastReq,curNode);
                 arcCount++;
                 lnsCap[curArc] = size;
                 lnsCost[curArc] = 1/static_cast <double>(size);
                 lnsSupplies[lastReq] += size;
                 lnsSupplies[curNode] -= size;
-                assert(curEntry.outerArcId!=-1);
-                lnsToGArcId[curArc] = curEntry.outerArcId;
+                assert(lastSeen[curIdSize].second!=-1);
+                lnsToGArcId[curArc] = lastSeen[curIdSize].second;
                 LLOG("lastseen--",i,curEntry.id,curEntry.size);
                 lastSeen.erase(curIdSize);
             }
@@ -189,7 +192,7 @@ int main(int argc, char* argv[]) {
                 if(ejectNodes.count(iOutNodeId)>0) {
                     LLOG("node must be part",iOutNodeId,0,0);
                     LLOG("lastseen++",i,curEntry.id,curEntry.size);
-                    lastSeen[curIdSize] = lnsG.id(curNode);
+                    lastSeen[curIdSize] = std::make_pair(lnsG.id(curNode),g.id(curArc));
                 } else {
                     LLOG("not in ejection set",iOutNodeId,0,0);
                     // not in ejection set
@@ -273,7 +276,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef LDEBUG
         for(auto it: lastSeen) {
-            LLOG("left-over lastSeen",it.first.first,it.first.second,it.second);
+            LLOG("left-over lastSeen",it.first.first,it.first.second,it.second.first);
         }
 #endif
         assert(lastSeen.size()==0);
@@ -375,9 +378,6 @@ int main(int argc, char* argv[]) {
                     GLOG("!!!nan",-distResMap[rnIt],lnsSupplies[lnsG.nodeFromId(lnsNodeId)],-distResMap[rnIt] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
                 }
 #endif
-            } else
-            {
-                OLOG("!!!triggered",0,0,0);
             }
         } while (++rnIt!=INVALID);
         OLOG("dual val pi part",testVal,0,0);
@@ -404,16 +404,12 @@ int main(int argc, char* argv[]) {
                 // update local dual solution value
                 testVal -= lnsAlpha3[aIt] * lnsCap[aIt];
                 testAlphaPart -= lnsAlpha3[aIt] * lnsCap[aIt];
-
+                // logging output
                 GLOG("3rdalphas",lnsG.id(aIt),lnsAlpha3[aIt],lnsCap[aIt]);
             }
         } while (++aIt!=INVALID);
 
-
         OLOG("dual Val",testVal,testAlphaPart,totalReqc-totalUniqC-testVal);
-
-        OLOG("test",0,0,0);
-        
         return 0;
 
     }
