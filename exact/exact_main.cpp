@@ -56,6 +56,5 @@ int main(int argc, char* argv[]) {
             resultfile << (it.size-flow[g.arcFromId(it.arcId)])/static_cast<double>(it.size) << "\n";
     }
 
-
     return 0;
 }
