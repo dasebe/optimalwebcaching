@@ -8,6 +8,8 @@
 //#define LDEBUG 1
 // uncomment to enable other debugging:
 #define ODEBUG 1
+// uncomment to enable pi debugging:
+#define PIDEBUG 1
 // util for debug
 inline void logMessage(std::string m, double x, double y, double z) {
     std::cerr << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
@@ -26,6 +28,11 @@ inline void logMessage(std::string m, double x, double y, double z) {
 #define OLOG(m,x,y,z) logMessage(m,x,y,z)
 #else
 #define OLOG(m,x,y,z)
+#endif
+#ifdef PIDEBUG
+#define PILOG(m,x,y,z) logMessage(m,x,y,z)
+#else
+#define PILOG(m,x,y,z)
 #endif
 
 

@@ -77,8 +77,8 @@ int main(int argc, char* argv[]) {
               << dualSol << std::endl << std::endl;
 
     // max ejection size mustn't be larger than actual trace
-    if(maxEjectSize > totalReqc - totalUniqC) {
-        maxEjectSize = totalReqc - totalUniqC + 1;
+    if(maxEjectSize > totalReqc) {
+        maxEjectSize = totalReqc + 1;
     }
     
     // tmp variables
@@ -89,11 +89,13 @@ int main(int argc, char* argv[]) {
     int64_t arcId;
     double extraArcCost;
     bool extraArcFlag;
-    size_t traceIndex;
+    size_t traceIndex=0, traceHalfIndex = 0;
     int64_t ejNodeIdT;
+    long double localDualValue, globalDualValue=0;
 
     // iterate over graph again
-    for(size_t kmin=0; kmin<trace.size(); kmin=traceIndex - maxEjectSize/2) {
+    for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
+        OLOG("start",kmin,traceIndex,maxEjectSize);
         // LNS graph structure
         SmartDigraph lnsG; // mcf graph
         extraNode = lnsG.addNode();
@@ -134,15 +136,18 @@ int main(int argc, char* argv[]) {
             }
             // at end of trace, so add last node
             if(traceIndex==trace.size()-1) {
-                OLOG("TRIGGERED2",0,0,0);
                 ejectNodes.insert(ejNodeIdT);
             }
             // calc max flow amount as sum of pos supplies
             traceIndex++;
+            // save half time to move forward for loop
+            if(traceIndex-kmin<=maxEjectSize) {
+                traceHalfIndex = traceIndex;
+            }
         }
         assert(maxFlowAmount>0);
         assert(arcId >= 0);
-        OLOG("ejS",kmin,maxEjectSize,ejectNodes.size());
+        OLOG("ejectSize",kmin,maxEjectSize,ejectNodes.size());
 
 #ifdef GDEBUG
         for(auto it: ejectNodes) {
@@ -359,8 +364,7 @@ int main(int argc, char* argv[]) {
       
 
         // actual calulation of dual PIs, Alphas and dual value
-        long double testVal;
-        testVal = 0;
+        localDualValue = 0;
         // pi sum part
         SmartDigraph::NodeIt rnIt(resG);
         do {
@@ -371,19 +375,17 @@ int main(int argc, char* argv[]) {
                 // update pi mapping
                 pi[g.nodeFromId(lnsToGNodeId[lnsG.nodeFromId(resToLnsNodeId[rnIt])])] = -distResMap[rnIt];
                 // update local dual solution value
-                testVal += -distResMap[rnIt] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
-                GLOG("pi val calc",lnsNodeId,-distResMap[rnIt],lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
+                localDualValue += -distResMap[rnIt] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)];
+                PILOG("pi val calc",lnsToGNodeId[lnsG.nodeFromId(lnsNodeId)],-distResMap[rnIt],lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
 #ifdef GDEBUG
-                if(!isfinite(testVal)) {
+                if(!isfinite(localDualValue)) {
                     GLOG("!!!nan",-distResMap[rnIt],lnsSupplies[lnsG.nodeFromId(lnsNodeId)],-distResMap[rnIt] * lnsSupplies[lnsG.nodeFromId(lnsNodeId)]);
                 }
 #endif
             }
         } while (++rnIt!=INVALID);
-        OLOG("dual val pi part",testVal,0,0);
 
         // alpha sum part
-        long double testAlphaPart = 0;
         SmartDigraph::ArcMap<double> lnsAlpha3(lnsG);
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
@@ -402,17 +404,43 @@ int main(int argc, char* argv[]) {
                 // update alpha mapping
                 alpha[g.arcFromId(lnsToGArcId[aIt])] = lnsAlpha3[aIt];
                 // update local dual solution value
-                testVal -= lnsAlpha3[aIt] * lnsCap[aIt];
-                testAlphaPart -= lnsAlpha3[aIt] * lnsCap[aIt];
+                localDualValue -= lnsAlpha3[aIt] * lnsCap[aIt];
                 // logging output
                 GLOG("3rdalphas",lnsG.id(aIt),lnsAlpha3[aIt],lnsCap[aIt]);
             }
         } while (++aIt!=INVALID);
 
-        OLOG("dual Val",testVal,testAlphaPart,totalReqc-totalUniqC-testVal);
-        return 0;
+        globalDualValue += localDualValue;
 
+        OLOG("ej dual Val",localDualValue,globalDualValue,totalReqc-totalUniqC-globalDualValue);
     }
+
+
+
+    // final calculation of dual value
+    dualValue = 0;
+    // pi sum part
+    SmartDigraph::NodeIt gIt(g);
+    do {
+        dualValue += pi[gIt] * supplies[gIt];
+        PILOG("final pi",g.id(gIt),pi[gIt],supplies[gIt]);
+    } while (++gIt!=INVALID);
+    OLOG("final pisum",dualValue,0,0);
+    // alpha sum part
+    SmartDigraph::ArcIt aIt(g);
+    do {
+    //     dualValue -= alpha[aIt] * cap[aIt];
+    // } while (++aIt!=INVALID);
+        const double piI = pi[g.source(aIt)];
+        const double piJ = pi[g.target(aIt)];
+        const double cij = cost[aIt];
+        const double curAlpha = piI - piJ - cij;
+        if(curAlpha > 0) {
+            dualValue -= curAlpha * cap[aIt];
+        }
+    } while (++aIt!=INVALID);
+
+    OLOG("final dual Val",dualValue,0,totalReqc-totalUniqC-dualValue);
 
 
     return 0;
