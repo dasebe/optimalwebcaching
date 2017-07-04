@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
-        OLOG("start",kmin,traceIndex,maxEjectSize);
+        OLOG("start config",kmin,traceIndex,maxEjectSize);
         // LNS graph structure
         SmartDigraph lnsG; // mcf graph
         extraNode = lnsG.addNode();
@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
         }
         assert(maxFlowAmount>0);
         assert(arcId >= 0);
-        OLOG("ejectSize",kmin,maxEjectSize,ejectNodes.size());
+        GLOG("ejectSize",kmin,maxEjectSize,ejectNodes.size());
 
 #ifdef GDEBUG
         for(auto it: ejectNodes) {
@@ -300,9 +300,7 @@ int main(int argc, char* argv[]) {
         GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
         // solve the local MCF
-        double solval = solveMCF(lnsG, lnsCap, lnsCost, lnsSupplies, lnsFlow, 4, lnsPi);
-        OLOG("solLNS",solval,ejectNodes.size(),0);
-        //        std::cerr << "ExLP" << 4 << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
+        solveMCF(lnsG, lnsCap, lnsCost, lnsSupplies, lnsFlow, 4, lnsPi);
 
         // recompute node potentials based on solved flow
         
@@ -412,36 +410,13 @@ int main(int argc, char* argv[]) {
 
         globalDualValue += localDualValue;
 
-        OLOG("ej dual Val",localDualValue,globalDualValue,totalReqc-totalUniqC-globalDualValue);
+        OLOG("end dualval",localDualValue,globalDualValue,totalReqc-totalUniqC-globalDualValue);
     }
 
+    OLOG("final dual Val",globalDualValue,0,totalReqc-totalUniqC-globalDualValue);
 
-
-    // final calculation of dual value
-    dualValue = 0;
-    // pi sum part
-    SmartDigraph::NodeIt gIt(g);
-    do {
-        dualValue += pi[gIt] * supplies[gIt];
-        PILOG("final pi",g.id(gIt),pi[gIt],supplies[gIt]);
-    } while (++gIt!=INVALID);
-    OLOG("final pisum",dualValue,0,0);
-    // alpha sum part
-    SmartDigraph::ArcIt aIt(g);
-    do {
-    //     dualValue -= alpha[aIt] * cap[aIt];
-    // } while (++aIt!=INVALID);
-        const double piI = pi[g.source(aIt)];
-        const double piJ = pi[g.target(aIt)];
-        const double cij = cost[aIt];
-        const double curAlpha = piI - piJ - cij;
-        if(curAlpha > 0) {
-            dualValue -= curAlpha * cap[aIt];
-        }
-    } while (++aIt!=INVALID);
-
-    OLOG("final dual Val",dualValue,0,totalReqc-totalUniqC-dualValue);
-
+    std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << totalReqc-totalUniqC-globalDualValue << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(globalDualValue)+totalUniqC)/totalReqc << std::endl;
+    std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << totalReqc-totalUniqC-globalDualValue << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(globalDualValue)+totalUniqC)/totalReqc << std::endl;
 
     return 0;
 }

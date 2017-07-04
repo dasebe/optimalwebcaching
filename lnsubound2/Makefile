@@ -7,7 +7,7 @@ CXX = g++ #clang++ #OSX
 CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
 CXXFLAGS += -MMD -MP # dependency tracking flags
 CXXFLAGS += -I..
-CXXFLAGS += -O3 -march=native # aggressive optimization settings #-ffast-math
+CXXFLAGS += -O3 -march=native -ffast-math # aggressive optimization settings #
 CXXFLAGS += -Wall -Werror 
 LDFLAGS += $(LIBS)
 
