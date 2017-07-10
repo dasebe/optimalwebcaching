@@ -34,8 +34,6 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
     SmartDigraph::Node curNode = g.addNode(); // initial node
     SmartDigraph::Node prevNode;
 
-    std::cerr << "starting creation of MCF graph" << std::endl;
-
     // iterate over trace
     for(uint64_t i=0; i<trace.size(); i++) {
         trEntry & curEntry = trace[i];

@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
 
     // parse trace file
     std::vector<trEntry> trace;
+    OLOG("opening trace",0,0,0);
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
     OLOG("scanned trace",totalReqc,totalUniqC,0);
@@ -40,6 +41,7 @@ int main(int argc, char* argv[]) {
     SmartDigraph::ArcMap<double> cost(g); // mcf costs
     SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
     createMCF(g, trace, cacheSize, cap, cost, supplies);
+    OLOG("finished g",totalReqc,totalUniqC,0);
     
     // LNS constants
     int64_t totalCapacity = 0;
@@ -71,10 +73,7 @@ int main(int argc, char* argv[]) {
         }
         GLOG("g arc",g.id(g.source(a)),g.id(g.target(a)),cost[a]);
     } while (++a != INVALID);
-    std::cerr << "created graph with "
-              << nodeCount << " nodes "
-              << arcCount << " arcs with dual cost "
-              << dualSol << std::endl << std::endl;
+    OLOG("finished dual init",nodeCount,arcCount,dualSol);
 
     // max ejection size mustn't be larger than actual trace
     if(maxEjectSize > totalReqc) {
@@ -93,11 +92,13 @@ int main(int argc, char* argv[]) {
     int64_t ejNodeIdT;
     long double localDualValue, globalDualValue=0;
     std::chrono::high_resolution_clock::time_point ts, tg, tmcf, tdone;
+    OLOG("bLoop",0,0,0);
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
-        ts = std::chrono::high_resolution_clock::now();
         OLOG("start config",kmin,traceIndex,maxEjectSize);
+        ts = std::chrono::high_resolution_clock::now();
+
         // LNS graph structure
         SmartDigraph lnsG; // mcf graph
         extraNode = lnsG.addNode();
