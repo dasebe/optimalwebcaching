@@ -30,7 +30,7 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
     // we consider (id,size) as unique identification of an object (sizes can change, but then it's a different object)
     // lastSeen maps (id,size) to (nodeId,traceIndex) of the last time this object was seen
     std::unordered_map<std::pair<uint64_t, uint64_t>, std::pair<uint64_t, int> > lastSeen;
-    SmartDigraph::Arc curArc;
+    SmartDigraph::Arc curInnerArc, curOuterArc;
     SmartDigraph::Node curNode = g.addNode(); // initial node
     SmartDigraph::Node prevNode;
 
@@ -43,12 +43,12 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
         if(lastSeen.count(std::make_pair(id,size))>0) {
             // create "outer" request arc
             const SmartDigraph::Node lastReq = g.nodeFromId(lastSeen[std::make_pair(id,size)].second);
-            curArc = g.addArc(lastReq,curNode);
-            cap[curArc] = size;
-            cost[curArc] = 1/static_cast <double>(size);
+            curOuterArc = g.addArc(lastReq,curNode);
+            cap[curOuterArc] = size;
+            cost[curOuterArc] = 1/static_cast <double>(size);
             supplies[lastReq] += size;
             supplies[curNode] -= size;
-            trace[lastSeen[std::make_pair(id,size)].first].outerArcId = g.id(curArc);
+            trace[lastSeen[std::make_pair(id,size)].first].outerArcId = g.id(curOuterArc);
             lastSeen.erase(std::make_pair(id,size));
         }
         // second: if there is another request for this object
@@ -58,11 +58,12 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             lastSeen[std::make_pair(id,size)]=std::make_pair(i,g.id(prevNode));
             // create another node, "inner" capacity arc
             curNode = g.addNode(); // next node
-            curArc = g.addArc(prevNode,curNode);
-            cap[curArc] = cacheSize; 
-            cost[curArc] = 0;
-            curEntry.innerArcId = g.id(curArc);
+            curInnerArc = g.addArc(prevNode,curNode);
+            cap[curInnerArc] = cacheSize; 
+            cost[curInnerArc] = 0;
         }
+        // set current inner arc id
+        curEntry.innerArcId = g.id(curInnerArc);
     }
 
     assert(lastSeen.size()==0);

@@ -1,5 +1,7 @@
 #include <fstream>
+#include <limits>
 #include <lemon/lgf_writer.h>
+#include <lemon/core.h>
 #include <lemon/bellman_ford.h>
 #include <cassert>
 #include <unordered_set>
@@ -7,12 +9,14 @@
 #include <vector>
 #include <queue>
 #include <tuple>
-#include <math.h>
+#include <cmath>
 #include <chrono>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
 using namespace lemon;
+
+#define ZEROEPSILON 1e-8
 
 typedef BellmanFord<SmartDigraph, SmartDigraph::ArcMap<double>> BellSolveType;
 
@@ -44,8 +48,6 @@ int main(int argc, char* argv[]) {
     OLOG("finished g",totalReqc,totalUniqC,0);
     
     // LNS constants
-    int64_t totalCapacity = 0;
-    int64_t maxFlowAmount = 0;
     double highestCost = -1;
 
     // dual-feasible solution: all alpha and pi are 0
@@ -66,7 +68,6 @@ int main(int argc, char* argv[]) {
         ++arcCount;
         alpha[a] = 0;
         dualSol -= alpha[a] * cap[a];
-        totalCapacity+=cap[a];
         const double curCost = cost[a];
         if(highestCost > curCost || highestCost==-1) {
             highestCost = curCost;
@@ -103,6 +104,7 @@ int main(int argc, char* argv[]) {
         SmartDigraph lnsG; // mcf graph
         extraNode = lnsG.addNode();
         curNode = lnsG.addNode();
+        prevNode = curNode;
         nodeCount = 0;
         arcCount = 0;
         uint64_t extraArcCount = 0;
@@ -125,7 +127,6 @@ int main(int argc, char* argv[]) {
         // mark nodes for the ejection set
         traceIndex = kmin;
         arcId = -1;
-        maxFlowAmount = 1;
         while(ejectNodes.size()<=maxEjectSize && traceIndex<trace.size()) {
             const trEntry & curEntry = trace[traceIndex];
             GLOG("lnsG",traceIndex,curEntry.hasNext,trace.size());
@@ -136,19 +137,10 @@ int main(int argc, char* argv[]) {
                 ejectNodes.insert(ejNodeIdS);
                 // if at end of trace, we also must add the last node so save it
                 ejNodeIdT = g.id(g.target(g.arcFromId(arcId)));
-                //maxFlowAmount += curEntry.size;
-                const int64_t curSupply = supply[g.source(g.arcFromId(arcId))];
-                if (curSupply>0) {
-                    maxFlowAmount += curSupply;
-                }
             }
             // at end of trace, so add last node
             if(traceIndex==trace.size()-1) {
                 ejectNodes.insert(ejNodeIdT);
-                const int64_t curSupply = supply[g.nodeFromId(ejNodeIdT)];
-                if (curSupply>0) {
-                    maxFlowAmount += curSupply;
-                }
             }
             // calc max flow amount as sum of pos supply
             traceIndex++;
@@ -157,7 +149,6 @@ int main(int argc, char* argv[]) {
                 traceHalfIndex = traceIndex;
             }
         }
-        //assert(maxFlowAmount>0);
         assert(arcId >= 0);
         GLOG("ejectSize",kmin,traceIndex,ejectNodes.size());
 
@@ -167,18 +158,19 @@ int main(int argc, char* argv[]) {
         for(size_t i=kmin; i<traceIndex; i++) {
             const trEntry & curEntry = trace[i];
             auto curIdSize = std::make_pair(curEntry.id,curEntry.size);
-            LLOG("curE",i,curEntry.id,g.id(g.target(g.arcFromId(curEntry.outerArcId))));
+            //            LLOG("curE",i,g.id(g.source(g.arcFromId(curEntry.outerArcId))),g.id(g.target(g.arcFromId(curEntry.outerArcId))));
+            GLOG("entry",i,curEntry.hasNext,trace.size());
 
             // create outer arc, if one is saved for this curIdSize
             if(lastSeen.count(curIdSize) > 0) { // 
+                GLOG("lastSeenNode",lnsToGNodeId[curNode],i,trace.size());
                 const uint64_t size = curEntry.size;
                 const SmartDigraph::Node lastReq = lnsG.nodeFromId(std::get<0>(lastSeen[curIdSize]));
                 curArc = lnsG.addArc(lastReq,curNode);
                 arcCount++;
                 lnsCap[curArc] = size;
                 lnsCost[curArc] = 1/static_cast <double>(size);
-                //lnsSupply[lastReq] += size;
-                //lnsSupply[curNode] -= size;
+                // assert that no link to extranode or nonexisting node here
                 assert(std::get<1>(lastSeen[curIdSize]) != -1);
                 lnsToGArcId[curArc] = std::get<1>(lastSeen[curIdSize]);
                 lnsIdToTraceIndex[lnsG.id(curArc)] = std::get<2>(lastSeen[curIdSize]);
@@ -192,22 +184,22 @@ int main(int argc, char* argv[]) {
 
             // if this curIdSize has another request in the future, create graph node
             if(curEntry.hasNext) {
-                // reset extra arc flag
-                extraArcFlag = false;
-                extraArcCost = highestCost+1;
-
                 // handle outer arc
                 arcId = curEntry.outerArcId;
+
+                // reset extra arc flags
+                extraArcFlag = false;
+                extraArcCost = highestCost+1;
 
                 // remember current node for outer arcid if in ejection set
                 curArc = g.arcFromId(arcId);
                 const int64_t iOutNodeId = g.id(g.target(curArc));
                 if(ejectNodes.count(iOutNodeId)>0) {
-                    LLOG("node must be part",iOutNodeId,0,0);
+                    GLOG("o node in E",iOutNodeId,0,0);
                     LLOG("lastseen++",i,curEntry.id,curEntry.size);
                     lastSeen[curIdSize] = std::make_tuple(lnsG.id(curNode),g.id(curArc),i);
                 } else {
-                    LLOG("not in ejection set",iOutNodeId,0,0);
+                    GLOG("o not in E",iOutNodeId,0,0);
                     // not in ejection set
                     // c^tile_ij = cij + aij + pi
                     extraArcCost = cost[curArc] + alpha[curArc] + pi[g.target(curArc)];
@@ -221,7 +213,7 @@ int main(int argc, char* argv[]) {
                 curArc = g.arcFromId(arcId);
                 const int64_t oOutNodeId = g.id(g.target(curArc));
                 if(ejectNodes.count(oOutNodeId)==0) {
-                    LLOG("not in ejection set",oOutNodeId,0,0);
+                    GLOG("i not in E",iOutNodeId,0,0);
                     // not in ejection set
                     // c^tile_ij = cij + aij + pi
                     const double curExtraArcCost = cost[curArc] + alpha[curArc] + pi[g.target(curArc)];
@@ -230,41 +222,17 @@ int main(int argc, char* argv[]) {
                         extraArcCost = curExtraArcCost;
                     }
                     extraArcFlag = true;
+                } else {
+                    GLOG("i node in E",iOutNodeId,0,0);
                 }
 
                 // if extra arc flag, create extra arc
                 if(extraArcFlag) {
+                    GLOG("cur->extra",lnsG.id(curNode),lnsG.id(extraNode),0);
                     curArc = lnsG.addArc(curNode,extraNode); //curArc = lnsG.addArc(extraNode,curNode);
                     extraArcCount++;
                     lnsCost[curArc] = extraArcCost;
-                    lnsCap[curArc] = maxFlowAmount;
-                    // reset extra arc flag
-                    extraArcFlag = false;
-                    extraArcCost = highestCost+1;
-                    lnsIdToTraceIndex[lnsG.id(curArc)] = i;
-                }
-
-                // iterate over all incoming arcs and derive cost of additional arc
-                const SmartDigraph::Node lNode = g.source(g.arcFromId(arcId));
-                for (SmartDigraph::InArcIt a(g, lNode); a!=INVALID; ++a) {
-                    const SmartDigraph::Node incArcNode = g.source(a);
-                    const int64_t incArcNodeId = g.id(incArcNode);
-                    if(ejectNodes.count(incArcNodeId)==0) {
-                        // not in ejection set
-                        // c^tile_ij = cij + aij - pi
-                        const double curCost = cost[a] + alpha[a] - pi[incArcNode];
-                        if(curCost < extraArcCost) {
-                            extraArcCost = curCost;
-                        }
-                        extraArcFlag = true;
-                    }
-                }
-                if(extraArcFlag) {
-                    // add additional arc to extraNode
-                    curArc = lnsG.addArc(extraNode,curNode); //                     curArc = lnsG.addArc(curNode,extraNode);
-                    extraArcCount++;
-                    lnsCost[curArc] = extraArcCost;
-                    lnsCap[curArc] = maxFlowAmount;
+                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
                     lnsIdToTraceIndex[lnsG.id(curArc)] = i;
                 }
 
@@ -281,6 +249,8 @@ int main(int argc, char* argv[]) {
                 lnsToGNodeId[prevNode] = g.id(g.source(g.arcFromId(arcId)));
                 lnsToGNodeId[curNode] = g.id(g.target(g.arcFromId(arcId)));
 
+                GLOG("added node",lnsToGNodeId[curNode],0,lnsToGNodeId[prevNode]);
+
                 // create inner arc
                 curArc = lnsG.addArc(prevNode,curNode);
                 arcCount++;
@@ -291,6 +261,81 @@ int main(int argc, char* argv[]) {
                 lnsIdToTraceIndex[lnsG.id(curArc)] = i;
                 LLOG("curEA",i,curEntry.id,lnsG.id(curNode));
             }
+
+            // iterate over all incoming arcs of current node
+            // at end of trace, so add last node
+            if(curEntry.hasNext) {
+                extraArcFlag = false;
+                extraArcCost = highestCost+1;
+                arcId = curEntry.innerArcId;
+                const SmartDigraph::Node lNode = g.source(g.arcFromId(arcId));
+                SmartDigraph::InArcIt a(g, lNode);
+                while(a!=INVALID) {
+                    const SmartDigraph::Node incArcNode = g.source(a);
+                    const int64_t incArcNodeId = g.id(incArcNode);
+                    GLOG("incArcs iter",i,g.id(lNode),incArcNodeId);
+                    if(ejectNodes.count(incArcNodeId)==0) {
+                        // not in ejection set
+                        // c^tile_ij = cij + aij - pi
+                        const double curCost = cost[a] + alpha[a] - pi[incArcNode];
+                        if(curCost < extraArcCost) {
+                            extraArcCost = curCost;
+                        }
+                        extraArcFlag = true;
+                        GLOG("incArcs ext",i,g.id(lNode),incArcNodeId);
+                    }
+                    // move loop forward
+                    ++a;
+                }
+                OLOG("done",0,0,0);
+                if(extraArcFlag) {
+                    //                const SmartDigraph::Node targetNode = 
+                    GLOG("extra->cur",i,lnsToGNodeId[extraNode],lnsToGNodeId[prevNode]);
+                    // add additional arc to extraNode
+                    curArc = lnsG.addArc(extraNode,prevNode); //                     curArc = lnsG.addArc(curNode,extraNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost;
+                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    lnsIdToTraceIndex[lnsG.id(curArc)] = i;
+                }
+            }
+
+            if(i==trace.size()-1) {
+                OLOG("last one check",0,0,0);
+                extraArcFlag = false;
+                extraArcCost = highestCost+1;
+                arcId = curEntry.innerArcId;
+                const SmartDigraph::Node lNode = g.target(g.arcFromId(arcId));
+                SmartDigraph::InArcIt a(g, lNode);
+                do {
+                    const SmartDigraph::Node incArcNode = g.source(a);
+                    const int64_t incArcNodeId = g.id(incArcNode);
+                    GLOG("incArcs iter",i,g.id(lNode),incArcNodeId);
+                    if(ejectNodes.count(incArcNodeId)==0) {
+                        // not in ejection set
+                        // c^tile_ij = cij + aij - pi
+                        const double curCost = cost[a] + alpha[a] - pi[incArcNode];
+                        if(curCost < extraArcCost) {
+                            extraArcCost = curCost;
+                        }
+                        extraArcFlag = true;
+                        GLOG("incArcs ext",i,g.id(lNode),incArcNodeId);
+                    }
+                }  while(++a!=INVALID);
+                if(extraArcFlag) {
+                    //                const SmartDigraph::Node targetNode = 
+                    GLOG("extra->cur",i,lnsToGNodeId[extraNode],lnsToGNodeId[curNode]);
+                    // add additional arc to extraNode
+                    curArc = lnsG.addArc(extraNode,curNode); //                     curArc = lnsG.addArc(curNode,extraNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost;
+                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    lnsIdToTraceIndex[lnsG.id(curArc)] = i;
+                }
+            }
+
+
+
         }
 
         // check supply
@@ -322,9 +367,10 @@ int main(int argc, char* argv[]) {
 
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
-            GLOG("l arc",
-                 lnsToGNodeId[lnsG.source(aIt)],
-                 lnsToGNodeId[lnsG.target(aIt)],lnsCost[aIt]);
+            GLOG("l arc\t"+std::to_string(lnsToGNodeId[lnsG.source(aIt)]),
+                 lnsToGNodeId[lnsG.target(aIt)],
+                 lnsCost[aIt],
+                 lnsCap[aIt]);
         } while (++aIt!=INVALID);
 #endif
 
@@ -337,149 +383,62 @@ int main(int argc, char* argv[]) {
         tmcf = std::chrono::high_resolution_clock::now();
 
 // node potentials based on network simplex
+        // PIs are all x(-1) and we need PI[extranode]=0 so subtract it everywhere
+        // do this while we compute local dual value (first pi sum)
+        localDualValue = 0;
+        const double piOffset = -lnsPi[extraNode];
+        SmartDigraph::NodeIt nIt2(lnsG);
+        do {
+            if(extraNode != nIt2 ) {
+                lnsPi[nIt2] = -lnsPi[nIt2] - piOffset;
+                localDualValue += lnsPi[nIt2] * lnsSupply[nIt2];
+                pi[g.nodeFromId(lnsToGNodeId[nIt2])] = lnsPi[nIt2];
+            } else {
+                lnsPi[extraNode] = 0;
+            }
+            PILOG("pi old val",lnsToGNodeId[nIt2],lnsPi[nIt2],lnsSupply[nIt2]);
+        } while (++nIt2!=INVALID);
+        OLOG("OLD pi sum",localDualValue,0,0);
+
+        
         SmartDigraph::ArcMap<double> lnsAlpha(lnsG);
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
-            const double piI = -lnsPi[lnsG.source(aIt)];
-            const double piJ = -lnsPi[lnsG.target(aIt)];
+            const double piI = lnsPi[lnsG.source(aIt)];
+            const double piJ = lnsPi[lnsG.target(aIt)];
             const double cij = lnsCost[aIt];
             const double curAlpha = piI - piJ - cij;
+            // calculate alpha
             if(curAlpha > 0)
                 lnsAlpha[aIt] = curAlpha;
             else
                 lnsAlpha[aIt] = 0;
-        } while (++aIt!=INVALID);
-        long double testVal;
-        testVal = 0;
-        SmartDigraph::NodeIt nIt2(lnsG);
-        do {
-            //            if(extraNode != nIt2 ) {
-                testVal += -lnsPi[nIt2] * lnsSupply[nIt2];
-                //}
-            PILOG("pi old val",lnsToGNodeId[nIt2],-lnsPi[nIt2],lnsSupply[nIt2]);
-        } while (++nIt2!=INVALID);
-        OLOG("OLD pi sum",testVal,0,0);
-        aIt = SmartDigraph::ArcIt(lnsG);
-        do {
-            //if(lnsCap[aIt] < maxFlowAmount) {
-                testVal -= lnsAlpha[aIt] * lnsCap[aIt];
-                //}
-        } while (++aIt!=INVALID);
-        OLOG("OLD dual val",testVal,0,0);
-
-
-
-// recompute node potentials based on solved flow
-        
-        // create residual graph
-        SmartDigraph resG; // mcf graph
-        SmartDigraph::NodeMap<int64_t> lnsToResNodeId(lnsG);
-        SmartDigraph::NodeMap<int64_t> resToLnsNodeId(resG);
-        SmartDigraph::ArcMap<double> resLength(resG);
-
-        nIt = SmartDigraph::NodeIt(lnsG);
-        do {
-            prevNode = curNode; // later needed to start bell solver
-            curNode = resG.addNode();
-            lnsToResNodeId[nIt] = resG.id(curNode);
-            resToLnsNodeId[curNode] = lnsG.id(nIt);
-        } while (++nIt!=INVALID);
-
-        aIt = SmartDigraph::ArcIt(lnsG);
-        do {
-            bool addedArc = false;
-            if(lnsFlow[aIt]<lnsCap[aIt]) {
-                // add forward arc
-                const int64_t resSourceId = lnsToResNodeId[lnsG.source(aIt)];
-                const int64_t resTargetId = lnsToResNodeId[lnsG.target(aIt)];
-                curArc = resG.addArc(resG.nodeFromId(resSourceId),
-                                     resG.nodeFromId(resTargetId));
-                resLength[curArc] = lnsCost[aIt];
-                addedArc = true;
-            }
-            if(lnsFlow[aIt]>0) {
-                // add reverse arc
-                const int64_t resSourceId = lnsToResNodeId[lnsG.target(aIt)]; // reverse order
-                const int64_t resTargetId = lnsToResNodeId[lnsG.source(aIt)];
-                curArc = resG.addArc(resG.nodeFromId(resSourceId),
-                                     resG.nodeFromId(resTargetId));
-                resLength[curArc] = -lnsCost[aIt];
-                addedArc = true;
-            }
-            assert(lnsCap[aIt]>0);
-            assert(addedArc);
-        } while (++aIt!=INVALID);
-
-        // solve for shortest path with Bellman Ford
-        BellSolveType bellsolver(resG, resLength);
-        SmartDigraph::NodeMap<double> distResMap(resG);
-        bellsolver.distMap(distResMap);
-        bellsolver.run(prevNode);
-
-
-#ifdef GDEBUG
-        SmartDigraph::ArcIt raIt(resG);
-        do {
-            GLOG("res arc",
-                lnsToGNodeId[lnsG.nodeFromId(resToLnsNodeId[resG.source(raIt)])],
-                lnsToGNodeId[lnsG.nodeFromId(resToLnsNodeId[resG.target(raIt)])],
-                resLength[raIt]);
-        } while (++raIt!=INVALID);
-#endif
-      
-
-        // actual calulation of dual PIs, Alphas and dual value
-        localDualValue = 0;
-        // pi sum part
-        SmartDigraph::NodeIt rnIt(resG);
-        do {
-            const int64_t lnsNodeId = resToLnsNodeId[rnIt];
-            GLOG("pi val supply",lnsNodeId,0,lnsSupply[lnsG.nodeFromId(lnsNodeId)]);
-            // need to exclude extraNode which sometimes can have NaN/Inf distResMap entry
-            // TODO CHECKME moved local dual value calculation out of if check
-            // update local dual solution value
-            localDualValue += -distResMap[rnIt] * lnsSupply[lnsG.nodeFromId(lnsNodeId)];
-            if(extraNode != lnsG.nodeFromId(lnsNodeId) ) {
-                // update pi mapping
-                pi[g.nodeFromId(lnsToGNodeId[lnsG.nodeFromId(resToLnsNodeId[rnIt])])] = -distResMap[rnIt];
-#ifdef GDEBUG
-                if(!isfinite(localDualValue)) {
-                    GLOG("!!!nan",-distResMap[rnIt],lnsSupply[lnsG.nodeFromId(lnsNodeId)],-distResMap[rnIt] * lnsSupply[lnsG.nodeFromId(lnsNodeId)]);
+            PILOG("alpha old val",lnsToGNodeId[lnsG.source(aIt)],lnsToGNodeId[lnsG.target(aIt)],lnsAlpha[aIt]); //,lnsCap[aIt],lnsAlpha[aIt] * lnsCap[aIt]);
+            // update alpha
+            if(lnsG.source(aIt)!=extraNode && lnsG.target(aIt)!=extraNode) {
+                const int64_t sId = lnsToGNodeId[lnsG.source(aIt)], tId = lnsToGNodeId[lnsG.target(aIt)];
+                alpha[findArc<SmartDigraph>(g,g.nodeFromId(sId),g.nodeFromId(tId))] = lnsAlpha[aIt];
+            } else {
+                // ensure that alpha for extra arcs are zero
+                if(std::abs(lnsAlpha[aIt]) <= ZEROEPSILON) {
+                    lnsAlpha[aIt] = 0;
+                } else {
+                    assert(lnsAlpha[aIt] == 0);
                 }
-#endif
-            }
-            PILOG("pi val calc",lnsToGNodeId[lnsG.nodeFromId(lnsNodeId)],-distResMap[rnIt],lnsSupply[lnsG.nodeFromId(lnsNodeId)]);
-        } while (++rnIt!=INVALID);
+            };
+            // update local dual objective
+            localDualValue -= lnsAlpha[aIt] * lnsCap[aIt];
+        } while (++aIt!=INVALID);
 
-        OLOG("NEW pi sum",localDualValue,0,localUniqCount);
+        //        assert(localDualValue>0);
 
-        // alpha sum part
-        SmartDigraph::ArcMap<double> lnsAlpha3(lnsG);
+        // flow cost setup
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
-            // ignore extraNode arc's alphas
-            //            if(lnsCap[aIt] < maxFlowAmount) {
-                const int64_t resSourceId = lnsToResNodeId[lnsG.source(aIt)];
-                const int64_t resTargetId = lnsToResNodeId[lnsG.target(aIt)];
-                const double piI = -distResMap[lnsG.nodeFromId(resSourceId)];
-                const double piJ = -distResMap[lnsG.nodeFromId(resTargetId)];
-                const double cij = lnsCost[aIt];
-                const double curAlpha = piI - piJ - cij;
-                if(curAlpha > 0)
-                    lnsAlpha3[aIt] = curAlpha;
-                else
-                    lnsAlpha3[aIt] = 0;
-                // update alpha mapping
-                alpha[g.arcFromId(lnsToGArcId[aIt])] = lnsAlpha3[aIt];
-                // update local dual solution value
-                localDualValue -= lnsAlpha3[aIt] * lnsCap[aIt];
                 // update dvar/flow mapping in trace vector by calc based on flow in outer arcs
                 assert(lnsIdToTraceIndex.count(lnsG.id(aIt)) > 0);
                 trEntry & mapEntry = trace[lnsIdToTraceIndex[lnsG.id(aIt)]];
                 mapEntry.lcost += static_cast<double>(lnsFlow[aIt]) * lnsCost[aIt];
-                // logging output
-                GLOG("3rdalphas",lnsG.id(aIt),lnsAlpha3[aIt],lnsCap[aIt]);
-                //}
         } while (++aIt!=INVALID);
 
         globalDualValue += localDualValue;
@@ -492,8 +451,6 @@ int main(int argc, char* argv[]) {
              std::chrono::duration_cast<std::chrono::duration<double>>(tdone-tmcf).count()
              );
 
-        return 0;
-             
     }
 
     double hitCount = 0;
