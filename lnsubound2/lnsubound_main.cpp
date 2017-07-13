@@ -312,7 +312,39 @@ int main(int argc, char* argv[]) {
         solveMCF(lnsG, lnsCap, lnsCost, lnsSupplies, lnsFlow, 4, lnsPi);
         tmcf = std::chrono::high_resolution_clock::now();
 
-        // recompute node potentials based on solved flow
+        /// test
+        SmartDigraph::ArcMap<double> lnsAlpha(lnsG);
+        aIt = SmartDigraph::ArcIt(lnsG);
+        do {
+            const double piI = lnsPi[lnsG.source(aIt)];
+            const double piJ = lnsPi[lnsG.target(aIt)];
+            const double cij = lnsCost[aIt];
+            const double curAlpha = piI - piJ - cij;
+            if(curAlpha > 0)
+                lnsAlpha[aIt] = curAlpha;
+            else
+                lnsAlpha[aIt] = 0;
+        } while (++aIt!=INVALID);
+        long double testVal;
+        testVal = 0;
+        SmartDigraph::NodeIt nIt2(lnsG);
+        do {
+            if(extraNode != nIt2 ) {
+                testVal += lnsPi[nIt2] * lnsSupplies[nIt2];
+            }
+        } while (++nIt2!=INVALID);
+        OLOG("OLD pis",testVal,0,0);
+        aIt = SmartDigraph::ArcIt(lnsG);
+        do {
+            if(lnsCap[aIt] < maxFlowAmount) {
+                testVal -= lnsAlpha[aIt] * lnsCap[aIt];
+            }
+        } while (++aIt!=INVALID);
+        OLOG("OLD dual Val",testVal,0,0);
+
+
+
+// recompute node potentials based on solved flow
         
         // create residual graph
         SmartDigraph resG; // mcf graph
@@ -370,6 +402,9 @@ int main(int argc, char* argv[]) {
         } while (++raIt!=INVALID);
 #endif
       
+
+        
+
 
         // actual calulation of dual PIs, Alphas and dual value
         localDualValue = 0;
