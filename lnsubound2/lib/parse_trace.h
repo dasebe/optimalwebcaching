@@ -3,12 +3,12 @@
 #include <lemon/smart_graph.h>
 
 // uncomment to enable graph debugging:
-#define GDEBUG 1
+//#define GDEBUG 1
 // uncomment to enable lastSeen debugging:
 //#define LDEBUG 1
 // uncomment to enable other debugging:
 #define ODEBUG 1
-// uncomment to enable pi debugging:
+//uncomment to enable pi debugging:
 //#define PIDEBUG 1
 // util for debug
 inline void logMessage(std::string m, double x, double y, double z) {
