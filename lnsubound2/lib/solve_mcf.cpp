@@ -1,4 +1,5 @@
 #include "solve_mcf.h"
+#include <cassert>
 
 // comment next line to use CapacityScaling solver
 #define NETWORKSIMPLEX
@@ -42,9 +43,11 @@ double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigr
 
     if(res==SolverType::INFEASIBLE) {
         std::cerr << "infeasible mcf" << std::endl;
+        assert(res!=SolverType::INFEASIBLE);
         return -1;
     } else if (res==SolverType::UNBOUNDED) {
         std::cerr << "unbounded mcf" << std::endl;
+        assert(res!=SolverType::UNBOUNDED);
         return -1;
     }
 

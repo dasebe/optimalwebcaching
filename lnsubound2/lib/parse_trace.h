@@ -9,7 +9,7 @@
 // uncomment to enable other debugging:
 #define ODEBUG 1
 // uncomment to enable pi debugging:
-//#define PIDEBUG 1
+#define PIDEBUG 1
 // util for debug
 inline void logMessage(std::string m, double x, double y, double z) {
     std::cerr << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
