@@ -11,7 +11,7 @@
 //uncomment to enable pi debugging:
 //#define PIDEBUG 1
 // util for debug
-inline void logMessage(std::string m, double x, double y, double z) {
+inline void logMessage(std::string m, long double x, long double y, long double z) {
     std::cerr << m << "\t" << x << "\t" << y  << "\t" << z << "\n";
 }
 #ifdef GDEBUG
@@ -79,4 +79,4 @@ namespace std
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path);
 
-SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies);
+SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies);

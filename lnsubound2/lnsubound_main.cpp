@@ -19,8 +19,6 @@ using namespace lemon;
 
 #define ZEROEPSILON 1e-8
 
-typedef BellmanFord<SmartDigraph, SmartDigraph::ArcMap<double>> BellSolveType;
-
 int main(int argc, char* argv[]) {
 
     if (argc != 5) {
@@ -43,19 +41,19 @@ int main(int argc, char* argv[]) {
     // create mcf instance
     SmartDigraph g; // mcf graph
     SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
-    SmartDigraph::ArcMap<double> cost(g); // mcf costs
+    SmartDigraph::ArcMap<long double> cost(g); // mcf costs
     SmartDigraph::NodeMap<int64_t> supply(g); // mcf demands/supply
     createMCF(g, trace, cacheSize, cap, cost, supply);
     OLOG("finished g",totalReqc,totalUniqC,0);
     
     // LNS constants
-    double highestCost = -1;
+    long double highestCost = -1;
 
     // dual-feasible solution: all alpha and pi are 0
     uint64_t nodeCount = 0, arcCount = 0;
-    double dualSol = 0;
-    SmartDigraph::NodeMap<double> pi(g);
-    SmartDigraph::ArcMap<double> alpha(g);
+    long double dualSol = 0;
+    SmartDigraph::NodeMap<long double> pi(g);
+    SmartDigraph::ArcMap<long double> alpha(g);
 
     SmartDigraph::NodeIt n(g);
     do {
@@ -69,7 +67,7 @@ int main(int argc, char* argv[]) {
         ++arcCount;
         alpha[a] = 0;
         dualSol -= alpha[a] * cap[a];
-        const double curCost = cost[a];
+        const long double curCost = cost[a];
         if(highestCost > curCost || highestCost==-1) {
             highestCost = curCost;
         }
@@ -89,7 +87,7 @@ int main(int argc, char* argv[]) {
     SmartDigraph::Node extraNode;
     int64_t nodeId;
     int64_t arcId;
-    double extraArcCost;
+    long double extraArcCost;
     bool extraArcFlag;
     uint64_t extraArcCount;
     size_t traceIndex=0, traceHalfIndex = 0;
@@ -112,11 +110,11 @@ int main(int argc, char* argv[]) {
         std::unordered_map<std::pair<uint64_t, uint64_t>, std::tuple<int64_t, int64_t, size_t> > lastSeen;
         // graph min cost flow information
         SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
-        SmartDigraph::ArcMap<double> lnsCost(lnsG); // mcf costs
+        SmartDigraph::ArcMap<long double> lnsCost(lnsG); // mcf costs
         SmartDigraph::NodeMap<int64_t> lnsSupply(lnsG); // mcf demands/supply
         SmartDigraph::ArcMap<int64_t> lnsFlow(lnsG); // in units of flow
         // temporary pi -- actually unused
-        SmartDigraph::NodeMap<double> lnsPi(lnsG);
+        SmartDigraph::NodeMap<long double> lnsPi(lnsG);
         // to map back results to g graph
         SmartDigraph::NodeMap<int64_t> lnsToGNodeId(lnsG);
         SmartDigraph::NodeMap<int64_t> lnsToTraceI(lnsG);
@@ -192,7 +190,7 @@ int main(int argc, char* argv[]) {
                 } else {
                     // incoming node not in ejection set
                     // c^tile_ij = cij + aij - pi
-                    const double curCost = cost[ia] + alpha[ia] - pi[incSrcNode];
+                    const long double curCost = cost[ia] + alpha[ia] - pi[incSrcNode];
                     // min over all extra arc costs
                     if(curCost < extraArcCost) {
                         extraArcCost = curCost;
@@ -237,7 +235,7 @@ int main(int argc, char* argv[]) {
                     // outgoing node not in ejection set
                     // c^tile_ij = cij + aij + pi
                     GLOG("oe",0,0,0);
-                    const double curExtraArcCost = cost[oa] + alpha[oa] + pi[outTrgtNode];
+                    const long double curExtraArcCost = cost[oa] + alpha[oa] + pi[outTrgtNode];
                     // min over all extra arc costs
                     if(curExtraArcCost < extraArcCost) {
                         extraArcCost = curExtraArcCost;
@@ -293,7 +291,7 @@ int main(int argc, char* argv[]) {
         // PIs are all x(-1) and we need PI[extranode]=0 so subtract it everywhere
         // do this while we compute local dual value (first pi sum)
         localDualValue = 0;
-        const double piOffset = -lnsPi[extraNode];
+        const long double piOffset = -lnsPi[extraNode];
         SmartDigraph::NodeIt nIt2(lnsG);
         do {
             if(extraNode != nIt2 ) {
@@ -311,10 +309,10 @@ int main(int argc, char* argv[]) {
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
             // calc alpha
-            const double piI = lnsPi[lnsG.source(aIt)];
-            const double piJ = lnsPi[lnsG.target(aIt)];
-            const double cij = lnsCost[aIt];
-            const double curAlpha = std::max(piI - piJ - cij, 0.0);
+            const long double piI = lnsPi[lnsG.source(aIt)];
+            const long double piJ = lnsPi[lnsG.target(aIt)];
+            const long double cij = lnsCost[aIt];
+            const long double curAlpha = std::max(piI - piJ - cij, 0.0L);
             PILOG("local alpha\t"+
                   std::to_string(lnsToGNodeId[lnsG.source(aIt)]),
                   lnsToGNodeId[lnsG.target(aIt)],
@@ -340,20 +338,20 @@ int main(int argc, char* argv[]) {
         //         // update dvar/flow mapping in trace vector by calc based on flow in outer arcs
         //         assert(lnsIdToTraceIndex.count(lnsG.id(aIt)) > 0);
         //         trEntry & mapEntry = trace[lnsIdToTraceIndex[lnsG.id(aIt)]];
-        //         mapEntry.lcost += static_cast<double>(lnsFlow[aIt]) * lnsCost[aIt];
+        //         mapEntry.lcost += static_cast<long double>(lnsFlow[aIt]) * lnsCost[aIt];
         // } while (++aIt!=INVALID);
 
         OLOG("local dual val",
              localDualValue,
-             std::chrono::duration_cast<std::chrono::duration<double>>(tg-ts).count(),
-             std::chrono::duration_cast<std::chrono::duration<double>>(tmcf-tg).count()
+             std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
+             std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
              );
 
         //        return 0;
 
     }
 
-    // double hitCount = 0;
+    // long double hitCount = 0;
     // for(auto & it: trace) {
     //     //lcost is not set if no hasNext!!
     //     if(it.hasNext) {
@@ -363,7 +361,7 @@ int main(int argc, char* argv[]) {
 
 
 
-    double dualVal = 0;
+    long double dualVal = 0;
     SmartDigraph::NodeIt nIt(g);
     do {
         dualVal += pi[nIt] * supply[nIt];

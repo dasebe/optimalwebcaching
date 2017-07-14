@@ -6,18 +6,18 @@
 
 #ifdef NETWORKSIMPLEX
 #include <lemon/network_simplex.h>
-typedef NetworkSimplex<SmartDigraph, int64_t, double> SolverType;
+typedef NetworkSimplex<SmartDigraph, int64_t, long double> SolverType;
 
 #else
 #include <lemon/capacity_scaling.h>
-typedef CapacityScaling<SmartDigraph, int64_t, double, CapacityScalingDefaultTraits<SmartDigraph, int64
-_t, double> > SolverType;
+typedef CapacityScaling<SmartDigraph, int64_t, long double, CapacityScalingDefaultTraits<SmartDigraph, int64
+_t, long double> > SolverType;
 
 #endif
 
 using namespace lemon;
 
-double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, SmartDigraph::ArcMap<int64_t> & flow, int solverPar, SmartDigraph::NodeMap<double> & lnsPi) {
+long double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, SmartDigraph::ArcMap<int64_t> & flow, int solverPar, SmartDigraph::NodeMap<long double> & lnsPi) {
 
     // solve the mcf instance
     SolverType solver(g);
@@ -57,5 +57,5 @@ double solveMCF(SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigr
     // export node potential map
     solver.potentialMap(lnsPi);
         
-    return solver.totalCost<double>();
+    return solver.totalCost<long double>();
 }

@@ -1,4 +1,3 @@
-//#include <iostream>
 #include <fstream>
 #include <cassert>
 #include <map>
@@ -25,7 +24,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     return uniqc;
 }
 
-SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies) {
+SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies) {
 
     // we consider (id,size) as unique identification of an object (sizes can change, but then it's a different object)
     // lastSeen maps (id,size) to (nodeId,traceIndex) of the last time this object was seen
@@ -45,7 +44,7 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             const SmartDigraph::Node lastReq = g.nodeFromId(lastSeen[std::make_pair(id,size)].second);
             curOuterArc = g.addArc(lastReq,curNode);
             cap[curOuterArc] = size;
-            cost[curOuterArc] = 1/static_cast <double>(size);
+            cost[curOuterArc] = 1/static_cast <long double>(size);
             supplies[lastReq] += size;
             supplies[curNode] -= size;
             lastSeen.erase(std::make_pair(id,size));
