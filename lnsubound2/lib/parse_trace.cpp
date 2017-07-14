@@ -48,7 +48,6 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             cost[curOuterArc] = 1/static_cast <double>(size);
             supplies[lastReq] += size;
             supplies[curNode] -= size;
-            trace[lastSeen[std::make_pair(id,size)].first].outerArcId = g.id(curOuterArc);
             lastSeen.erase(std::make_pair(id,size));
         }
         // second: if there is another request for this object
