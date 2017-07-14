@@ -94,12 +94,11 @@ int main(int argc, char* argv[]) {
     uint64_t extraArcCount;
     size_t traceIndex=0, traceHalfIndex = 0;
     long double localDualValue;
-    std::chrono::high_resolution_clock::time_point ts, tg, tmcf, tdone;
-    OLOG("bLoop",0,0,0);
+    std::chrono::high_resolution_clock::time_point ts, tg, tmcf;
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
-        OLOG("start config",kmin,traceIndex,maxEjectSize);
+        //        OLOG("start config",kmin,traceIndex,maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
 
         // LNS graph structure
@@ -158,7 +157,7 @@ int main(int argc, char* argv[]) {
             // increment index
             traceIndex++;
             // save half time to move forward for loop
-            if(traceIndex-kmin<=maxEjectSize) {
+            if(traceIndex-kmin<=maxEjectSize/2) {
                 traceHalfIndex = traceIndex;
             }
         }
@@ -167,7 +166,6 @@ int main(int argc, char* argv[]) {
 
         GLOG("trIndex",kmin,traceIndex,0);
 
-        uint64_t localUniqCount = 0;
         for(int64_t curNodeId: ejectNodes) {
             curGNode = g.nodeFromId(curNodeId);
             curLnsNode = lnsG.nodeFromId(gtoLnsNodeId[curGNode]);
@@ -287,8 +285,7 @@ int main(int argc, char* argv[]) {
         GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
         // solve the local MCF
-        double mcfsol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
-        OLOG("MCF sol val",mcfsol,0,0);
+        solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
         tmcf = std::chrono::high_resolution_clock::now();
 
 // node potentials based on network simplex
@@ -307,7 +304,7 @@ int main(int argc, char* argv[]) {
             }
             PILOG("local pi",lnsToGNodeId[nIt2],lnsPi[nIt2],lnsSupply[nIt2]);
         } while (++nIt2!=INVALID);
-        OLOG("local pi sum",localDualValue,0,0);
+        PILOG("local pi sum",localDualValue,0,0);
 
         
         aIt = SmartDigraph::ArcIt(lnsG);
@@ -345,12 +342,10 @@ int main(int argc, char* argv[]) {
         //         mapEntry.lcost += static_cast<double>(lnsFlow[aIt]) * lnsCost[aIt];
         // } while (++aIt!=INVALID);
 
-        tdone = std::chrono::high_resolution_clock::now();
-        OLOG("local dual val",localDualValue,0,localUniqCount);
-        OLOG("timings",
+        OLOG("local dual val",
+             localDualValue,
              std::chrono::duration_cast<std::chrono::duration<double>>(tg-ts).count(),
-             std::chrono::duration_cast<std::chrono::duration<double>>(tmcf-tg).count(),
-             std::chrono::duration_cast<std::chrono::duration<double>>(tdone-tmcf).count()
+             std::chrono::duration_cast<std::chrono::duration<double>>(tmcf-tg).count()
              );
 
     }
@@ -371,7 +366,7 @@ int main(int argc, char* argv[]) {
         dualVal += pi[nIt] * supply[nIt];
         PILOG("global pi",g.id(nIt),pi[nIt],supply[nIt]);
     } while (++nIt!=INVALID);
-    OLOG("global pi sum",dualVal,0,0);
+    PILOG("global pi sum",dualVal,0,0);
     SmartDigraph::ArcIt aIt(g);
     do {
         dualVal -= alpha[aIt] * cap[aIt];
