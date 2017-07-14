@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
     std::chrono::high_resolution_clock::time_point ts, tg, tmcf;
 
     // iterate over graph again
-    for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
+    for(size_t kmin=trace.size(); kmin>0; kmin=traceHalfIndex) {
         //        OLOG("start config",kmin,traceIndex,maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
 
@@ -107,7 +107,6 @@ int main(int argc, char* argv[]) {
         extraArcCount = 0;
         // LNS iteration step state
         std::unordered_set<int64_t> ejectNodes;
-        std::unordered_map<std::pair<uint64_t, uint64_t>, std::tuple<int64_t, int64_t, size_t> > lastSeen;
         // graph min cost flow information
         SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
         SmartDigraph::ArcMap<long double> lnsCost(lnsG); // mcf costs
@@ -126,15 +125,16 @@ int main(int argc, char* argv[]) {
         traceIndex = kmin;
         arcId = -1;
         int64_t totalSupply = 0;
+        traceHalfIndex = 0;
 
-        while(ejectNodes.size()<=maxEjectSize && traceIndex<trace.size()) {
-            const trEntry & curEntry = trace[traceIndex];
+        while(ejectNodes.size()<=maxEjectSize && traceIndex>0) {
+            const trEntry & curEntry = trace[traceIndex-1];
             GLOG("lnsG",traceIndex,curEntry.hasNext,trace.size());
             arcId = curEntry.innerArcId;
             curGNode = INVALID;
             if(curEntry.hasNext) {
                 curGNode = g.source(g.arcFromId(arcId));
-            } else if (traceIndex==trace.size()-1) {
+            } else if (traceIndex==trace.size()) {
                 // at end of trace we add the last node
                 curGNode = g.target(g.arcFromId(arcId));
             }
@@ -153,12 +153,13 @@ int main(int argc, char* argv[]) {
                 gtoLnsNodeId[curGNode] = lnsG.id(curLnsNode);
             }
             // increment index
-            traceIndex++;
+            traceIndex--;
             // save half time to move forward for loop
-            if(traceIndex-kmin<=maxEjectSize) {
+            if(ejectNodes.size()==maxEjectSize) {
                 traceHalfIndex = traceIndex;
             }
         }
+        traceHalfIndex = kmin-maxEjectSize;
         lnsSupply[extraNode] = -totalSupply;
         GLOG("ejectSize",kmin,traceIndex,ejectNodes.size());
 
@@ -255,14 +256,6 @@ int main(int argc, char* argv[]) {
             }
         }
 
-
-#ifdef LDEBUG
-        for(auto it: lastSeen) {
-            LLOG("left-over lastSeen",it.first.first,it.first.second,std::get<0>(it.second));
-        }
-#endif
-        assert(lastSeen.size()==0);
-
         SmartDigraph::ArcIt aIt;
 
 #ifdef GDEBUG
@@ -351,6 +344,7 @@ int main(int argc, char* argv[]) {
              std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
              );
+
     }
    
 
