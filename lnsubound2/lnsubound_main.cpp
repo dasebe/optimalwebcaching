@@ -10,14 +10,14 @@
 #include <queue>
 #include <tuple>
 #include <cmath>
-#include <algorithm>
 #include <chrono>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
 using namespace lemon;
 
-#define ZEROEPSILON 1e-8
+#define ZEROEPSILONSET 1e-9
+#define ZEROEPSILONCHECK 1e-6
 
 int main(int argc, char* argv[]) {
 
@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
-        OLOG("start config",kmin,traceIndex,maxEjectSize);
+        //        OLOG("start config",kmin,traceIndex,maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
 
         // LNS graph structure
@@ -284,10 +284,11 @@ int main(int argc, char* argv[]) {
         GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
         // solve the local MCF
-        solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
+        double mcfSol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
         tmcf = std::chrono::high_resolution_clock::now();
 
 // node potentials based on network simplex
+
         // PIs are all x(-1) and we need PI[extranode]=0 so subtract it everywhere
         // do this while we compute local dual value (first pi sum)
         localDualValue = 0;
@@ -305,14 +306,18 @@ int main(int argc, char* argv[]) {
         } while (++nIt2!=INVALID);
         PILOG("local pi sum",localDualValue,0,0);
 
-        
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
             // calc alpha
             const long double piI = lnsPi[lnsG.source(aIt)];
             const long double piJ = lnsPi[lnsG.target(aIt)];
             const long double cij = lnsCost[aIt];
-            const long double curAlpha = std::max(piI - piJ - cij, 0.0L);
+            long double curAlpha = piI - piJ - cij;
+            // correct negative alphas and rounding errors
+            if(curAlpha < 0 || std::abs(curAlpha) <= ZEROEPSILONSET) {
+                curAlpha = 0.0L;
+            }
+
             PILOG("local alpha\t"+
                   std::to_string(lnsToGNodeId[lnsG.source(aIt)]),
                   lnsToGNodeId[lnsG.target(aIt)],
@@ -324,7 +329,7 @@ int main(int argc, char* argv[]) {
                 alpha[g.arcFromId(lnsToGArcId[aIt])] = curAlpha;
             } else {
                 // ensure that alpha for extra arcs are zero
-                assert(std::abs(curAlpha) <= ZEROEPSILON);
+                assert(std::abs(curAlpha) <= ZEROEPSILONCHECK);
             };
             // update local dual objective
             localDualValue -= curAlpha * lnsCap[aIt];
@@ -341,15 +346,13 @@ int main(int argc, char* argv[]) {
         //         mapEntry.lcost += static_cast<long double>(lnsFlow[aIt]) * lnsCost[aIt];
         // } while (++aIt!=INVALID);
 
-        OLOG("local dual val",
-             localDualValue,
+        OLOG("local dual val\t"+std::to_string(kmin)+"\t"+std::to_string(localDualValue),
+             mcfSol,
              std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
              );
-
-        //        return 0;
-
     }
+   
 
     // long double hitCount = 0;
     // for(auto & it: trace) {
