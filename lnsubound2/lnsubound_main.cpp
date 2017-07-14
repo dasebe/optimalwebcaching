@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
 
     // iterate over graph again
     for(size_t kmin=0; kmin<trace.size(); kmin=traceHalfIndex+1) {
-        //        OLOG("start config",kmin,traceIndex,maxEjectSize);
+        OLOG("start config",kmin,traceIndex,maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
 
         // LNS graph structure
@@ -157,7 +157,7 @@ int main(int argc, char* argv[]) {
             // increment index
             traceIndex++;
             // save half time to move forward for loop
-            if(traceIndex-kmin<=maxEjectSize/2) {
+            if(traceIndex-kmin<=maxEjectSize) {
                 traceHalfIndex = traceIndex;
             }
         }
@@ -223,6 +223,7 @@ int main(int argc, char* argv[]) {
                 const int64_t outTrgtNodeId = g.id(outTrgtNode);
                 GLOG("out",curNodeId,outTrgtNodeId,0);
                 if(ejectNodes.count(outTrgtNodeId)!=0) {
+                    // constructing both incoming and outgoing arcs would lead to duplicates
                     // outgoing to ejection set
                     // GLOG("add arc oi",curNodeId,outTrgtNodeId,cost[oa]);
                     // curArc = lnsG.addArc(
@@ -348,6 +349,8 @@ int main(int argc, char* argv[]) {
              std::chrono::duration_cast<std::chrono::duration<double>>(tmcf-tg).count()
              );
 
+        //        return 0;
+
     }
 
     // double hitCount = 0;
@@ -377,7 +380,7 @@ int main(int argc, char* argv[]) {
               alpha[aIt] * cap[aIt]);
     } while (++aIt!=INVALID);
     
-    OLOG("global dual val",dualVal,totalReqc-totalUniqC-dualVal,double(totalReqc-totalUniqC-dualVal)/totalReqc);
+    OLOG("global dual val",dualVal,double(totalReqc-totalUniqC)/totalReqc,double(totalReqc-totalUniqC-dualVal)/totalReqc);
 
     //    std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
     //    std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
