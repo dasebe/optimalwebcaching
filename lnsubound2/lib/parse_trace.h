@@ -3,7 +3,7 @@
 #include <lemon/smart_graph.h>
 
 // uncomment to enable graph debugging:
-#define GDEBUG 1
+//#define GDEBUG 1
 // uncomment to enable lastSeen debugging:
 //#define LDEBUG 1
 // uncomment to enable other debugging:

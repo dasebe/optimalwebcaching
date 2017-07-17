@@ -86,8 +86,8 @@ int main(int argc, char* argv[]) {
     SmartDigraph::Node curGNode;
     SmartDigraph::Node extraNode;
     int64_t arcId;
-    long double extraArcCost;
-    bool extraArcFlag;
+    long double extraArcCost1, extraArcCost2;
+    bool extraArcFlag1, extraArcFlag2;
     uint64_t extraArcCount;
     size_t traceIndex=0, traceHalfIndex = 0;
     long double localDualValue;
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 
         // mark nodes for the ejection set
         traceIndex = kmin;
-        traceHalfIndex = 0;
+        traceHalfIndex = maxEjectSize/4;
 
         while(ejectNodes.size()<=maxEjectSize && traceIndex>0) {
             const trEntry & curEntry = trace[traceIndex-1];
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
                 break;
             }
         }
-        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
+        //        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
 
         // create lns graph nodes
         int64_t totalSupply = 0;
@@ -188,8 +188,8 @@ int main(int argc, char* argv[]) {
             curLnsNode = lnsG.nodeFromId(gtoLnsNodeId[curGNode]);
 
             // INCOMING ARCS
-            extraArcFlag = false;
-            extraArcCost = highestCost+1;
+            extraArcFlag1 = false;
+            extraArcCost1 = highestCost+1;
             SmartDigraph::InArcIt ia(g, curGNode);
             while(ia!=INVALID) {
                 const SmartDigraph::Node incSrcNode = g.source(ia);
@@ -212,32 +212,36 @@ int main(int argc, char* argv[]) {
                     const long double curCost = cost[ia] + alpha[ia] - pi[incSrcNode];
                     GLOG("extraCost ie",curNodeId,incSrcNodeId,cost[ia]);
                     // min over all extra arc costs
-                    if(curCost < extraArcCost) {
-                        extraArcCost = curCost;
+                    if(curCost < extraArcCost1) {
+                        extraArcCost1 = curCost;
                     }
-                    extraArcFlag = true;
+                    extraArcFlag1 = true;
                 }
                 // move loop forward
                 ++ia;
             }
             // add incoming arc from EXTRANODE
-            if(extraArcFlag) {
-                if(lnsSupply[curLnsNode]<0) {
-                    // only add extra arc if there is negative supply
-                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost);
+            if(extraArcFlag1) {
+                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost1);
                     curArc = lnsG.addArc(extraNode,curLnsNode);
                     extraArcCount++;
-                    lnsCost[curArc] = extraArcCost;
-                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    if(std::abs(extraArcCost1) <= ZEROEPSILONSET) {
+                        extraArcCost1 = 0;
+                    }
+                    lnsCost[curArc] = extraArcCost1;
+                    if(lnsCost[curArc]<0) {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    } else {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max()-1;
+                    }
                     lnsToGArcId[curArc] = -1;
-                }
             }
         
 
 
             // OUTGOING ARCS
-            extraArcFlag = false;
-            extraArcCost = highestCost+1;
+            extraArcFlag2 = false;
+            extraArcCost2 = highestCost+1;
             SmartDigraph::OutArcIt oa(g, curGNode);
             while(oa!=INVALID) {
                 const SmartDigraph::Node outTrgtNode = g.target(oa);
@@ -260,22 +264,37 @@ int main(int argc, char* argv[]) {
                     const long double curExtraArcCost = cost[oa] + alpha[oa] + pi[outTrgtNode];
                     GLOG("extraCost oe",curNodeId,outTrgtNodeId,cost[oa]);
                     // min over all extra arc costs
-                    if(curExtraArcCost < extraArcCost) {
-                        extraArcCost = curExtraArcCost;
+                    if(curExtraArcCost < extraArcCost2) {
+                        extraArcCost2 = curExtraArcCost;
                     }
-                    extraArcFlag = true;
+                    extraArcFlag2 = true;
                 }
                 ++oa;
             }
             // add outgoing arc to EXTRANODE
-            if(extraArcFlag) {
-                if(lnsSupply[curLnsNode]>0) {
-                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost);
+            if(extraArcFlag2) {
+                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost2);
                     curArc = lnsG.addArc(curLnsNode,extraNode);
                     extraArcCount++;
-                    lnsCost[curArc] = extraArcCost;
-                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    if(std::abs(extraArcCost2) <= ZEROEPSILONSET) {
+                        extraArcCost2 = 0;
+                    }
+                    lnsCost[curArc] = extraArcCost2;
+                    if(lnsCost[curArc]<0) {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    } else {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max()-1;
+                    }
                     lnsToGArcId[curArc] = -1;
+            }
+
+            if(extraArcFlag1 && extraArcFlag2) {
+                if (
+                    (extraArcCost1<0 && -extraArcCost1 > extraArcCost2) ||
+                    (extraArcCost2<0 && -extraArcCost2 > extraArcCost1)
+                    )
+                {
+                    OLOG("neg cost cycle",curNodeId,extraArcCost1,extraArcCost2);
                 }
             }
         }
@@ -363,9 +382,14 @@ int main(int argc, char* argv[]) {
         //         mapEntry.lcost += static_cast<long double>(lnsFlow[aIt]) * lnsCost[aIt];
         // } while (++aIt!=INVALID);
 
+        // OLOG("local dual val\t"+std::to_string(kmin)+"\t"+std::to_string(localDualValue),
+        //      mcfSol,
+        //      std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
+        //      std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
+        //      );
         OLOG("local dual val\t"+std::to_string(kmin)+"\t"+std::to_string(localDualValue),
              mcfSol,
-             std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
+             ejectNodes.size(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
              );
 
