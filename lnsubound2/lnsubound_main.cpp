@@ -85,7 +85,6 @@ int main(int argc, char* argv[]) {
     SmartDigraph::Node curLnsNode;
     SmartDigraph::Node curGNode;
     SmartDigraph::Node extraNode;
-    int64_t nodeId;
     int64_t arcId;
     long double extraArcCost;
     bool extraArcFlag;
@@ -123,12 +122,11 @@ int main(int argc, char* argv[]) {
 
         // mark nodes for the ejection set
         traceIndex = kmin;
-        arcId = -1;
-        int64_t totalSupply = 0;
         traceHalfIndex = 0;
 
         while(ejectNodes.size()<=maxEjectSize && traceIndex>0) {
             const trEntry & curEntry = trace[traceIndex-1];
+            //            OLOG("test",traceIndex,ejectNodes.size(),0);
             GLOG("lnsG",traceIndex,curEntry.hasNext,trace.size());
             arcId = curEntry.innerArcId;
             curGNode = INVALID;
@@ -140,27 +138,47 @@ int main(int argc, char* argv[]) {
             }
             // add node to lns graph
             if(curGNode != INVALID) {
-                nodeId = g.id(curGNode);
-                ejectNodes.insert(nodeId);
-                curLnsNode = lnsG.addNode();
-                nodeCount++;
-                // copy supply
-                lnsSupply[curLnsNode] = supply[curGNode];
-                totalSupply += lnsSupply[curLnsNode];
-                // establish mapping
-                lnsToGNodeId[curLnsNode] = nodeId;
-                lnsToTraceI[curLnsNode] = traceIndex;
-                gtoLnsNodeId[curGNode] = lnsG.id(curLnsNode);
+                const int64_t curId = g.id(curGNode);
+                ejectNodes.insert(curId);
+                SmartDigraph::InArcIt ia(g, curGNode);
+                while(ia!=INVALID) {
+                    const int64_t curId = g.id(g.source(ia));
+                    ejectNodes.insert(curId);
+                    ++ia;
+                }
+                SmartDigraph::OutArcIt oa(g, curGNode);
+                while(oa!=INVALID) {
+                    const int64_t curId = g.id(g.target(oa));
+                    ejectNodes.insert(curId);
+                    ++oa;
+                }
             }
             // increment index
             traceIndex--;
             // save half time to move forward for loop
-            if(ejectNodes.size()==maxEjectSize) {
+            if (ejectNodes.size()>maxEjectSize) {
                 traceHalfIndex = traceIndex;
+                break;
             }
         }
-        traceHalfIndex = kmin-maxEjectSize;
+        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
+
+        // create lns graph nodes
+        int64_t totalSupply = 0;
+        for(int64_t nodeId: ejectNodes) {
+            curGNode = g.nodeFromId(nodeId);
+            curLnsNode = lnsG.addNode();
+            nodeCount++;
+            // copy supply
+            lnsSupply[curLnsNode] = supply[curGNode];
+            totalSupply += lnsSupply[curLnsNode];
+            // establish mapping
+            lnsToGNodeId[curLnsNode] = nodeId;
+            lnsToTraceI[curLnsNode] = traceIndex;
+            gtoLnsNodeId[curGNode] = lnsG.id(curLnsNode);
+        }
         lnsSupply[extraNode] = -totalSupply;
+
         GLOG("ejectSize",kmin,traceIndex,ejectNodes.size());
 
         GLOG("trIndex",kmin,traceIndex,0);
@@ -192,6 +210,7 @@ int main(int argc, char* argv[]) {
                     // incoming node not in ejection set
                     // c^tile_ij = cij + aij - pi
                     const long double curCost = cost[ia] + alpha[ia] - pi[incSrcNode];
+                    GLOG("extraCost ie",curNodeId,incSrcNodeId,cost[ia]);
                     // min over all extra arc costs
                     if(curCost < extraArcCost) {
                         extraArcCost = curCost;
@@ -203,12 +222,15 @@ int main(int argc, char* argv[]) {
             }
             // add incoming arc from EXTRANODE
             if(extraArcFlag) {
-                GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost);
-                curArc = lnsG.addArc(extraNode,curLnsNode);
-                extraArcCount++;
-                lnsCost[curArc] = extraArcCost;
-                lnsCap[curArc] = std::numeric_limits<int64_t>::max();
-                lnsToGArcId[curArc] = -1;
+                if(lnsSupply[curLnsNode]<0) {
+                    // only add extra arc if there is negative supply
+                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost);
+                    curArc = lnsG.addArc(extraNode,curLnsNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost;
+                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    lnsToGArcId[curArc] = -1;
+                }
             }
         
 
@@ -235,8 +257,8 @@ int main(int argc, char* argv[]) {
                 } else {
                     // outgoing node not in ejection set
                     // c^tile_ij = cij + aij + pi
-                    GLOG("oe",0,0,0);
                     const long double curExtraArcCost = cost[oa] + alpha[oa] + pi[outTrgtNode];
+                    GLOG("extraCost oe",curNodeId,outTrgtNodeId,cost[oa]);
                     // min over all extra arc costs
                     if(curExtraArcCost < extraArcCost) {
                         extraArcCost = curExtraArcCost;
@@ -247,12 +269,14 @@ int main(int argc, char* argv[]) {
             }
             // add outgoing arc to EXTRANODE
             if(extraArcFlag) {
-                GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost);
-                curArc = lnsG.addArc(curLnsNode,extraNode);
-                extraArcCount++;
-                lnsCost[curArc] = extraArcCost;
-                lnsCap[curArc] = std::numeric_limits<int64_t>::max();
-                lnsToGArcId[curArc] = -1;
+                if(lnsSupply[curLnsNode]>0) {
+                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost);
+                    curArc = lnsG.addArc(curLnsNode,extraNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost;
+                    lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    lnsToGArcId[curArc] = -1;
+                }
             }
         }
 

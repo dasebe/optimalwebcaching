@@ -1608,6 +1608,9 @@ namespace lemon {
 
       // Check feasibility
       for (int e = _search_arc_num; e != _all_arc_num; ++e) {
+          std::cerr << "edge " << e << " flow " << _flow[e] << " cost " << _cost[e] << " cap " << _cap[e] << " source " <<  _source[e] << " target " << _target[e] << "\n";
+          if (_flow[e] != 0)
+              std::cerr << "infeasible edge " << e << " flow " << _flow[e] << " cost " << _cost[e] << " cap " << _cap[e] << " source " <<  _source[e] << " target " << _target[e] << "\n";
         if (_flow[e] != 0) return INFEASIBLE;
       }
 
