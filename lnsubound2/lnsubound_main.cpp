@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 
     // iterate over graph again
     for(size_t kmin=trace.size(); kmin>0; kmin=traceHalfIndex) {
-        //        OLOG("start config",kmin,traceIndex,maxEjectSize);
+        OLOG("start config",kmin,traceIndex,maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
 
         // LNS graph structure
@@ -317,7 +317,7 @@ int main(int argc, char* argv[]) {
 #endif
 
         tg = std::chrono::high_resolution_clock::now();
-        GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
+        OLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
         // solve the local MCF
         double mcfSol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
