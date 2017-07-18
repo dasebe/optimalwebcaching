@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
         ++nodeCount;
         pi[n] = 0;
         dualSol += pi[n] * supply[n];
-        GLOG("g node",g.id(n),supply[n],0);
+        //GLOG("g node",g.id(n),supply[n],0);
     } while (++n != INVALID);
     SmartDigraph::ArcIt a(g);
     do {
@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
         if(highestCost > curCost || highestCost==-1) {
             highestCost = curCost;
         }
-        GLOG("g arc",g.id(g.source(a)),g.id(g.target(a)),cost[a]);
+        //GLOG("g arc",g.id(g.source(a)),g.id(g.target(a)),cost[a]);
     } while (++a != INVALID);
     OLOG("finished dual init",nodeCount,arcCount,dualSol);
 
@@ -81,18 +81,23 @@ int main(int argc, char* argv[]) {
     }
 
     // ordered list of utilities and check that objects have size less than cache size
-    std::multimap<double, size_t> prio;
+    typedef std::multimap<double, std::vector<size_t> > prioMap_t;
+    prioMap_t prio;
+    std::unordered_map<std::pair<uint64_t, uint64_t>, prioMap_t::iterator> idPrioMap;
     for(size_t i=0; i<trace.size(); i++) {
         auto & it = trace[i];
         if(it.size > cacheSize) {
             it.hasNext = false;
         }
         if(it.hasNext) {
-            if(it.iLen < 0) {
-                OLOG("fail",it.origTime,it.size,it.iLen);
-            }
             assert(it.iLen>=0);
-            prio.insert(std::make_pair(it.iLen * it.size, i));
+            auto idSize = std::make_pair(it.id, it.size);
+            if( idPrioMap.count(idSize) > 0) {
+                (idPrioMap[idSize]->second).push_back(i);
+            } else {
+                const double prioVal = it.iLen * it.size;
+                idPrioMap[idSize] = prio.insert(std::make_pair(prioVal, std::vector<size_t>{i}));
+            }
         }
     }
 
@@ -115,7 +120,7 @@ int main(int argc, char* argv[]) {
     uint64_t processedCount = 0;
 
     while(!reachedEnd) {
-        OLOG("start",prioIt->first,prioIt->second,maxEjectSize);
+        OLOG("start",prioIt->first,(prioIt->second).size(),maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
         // LNS iteration step state
         ejectNodes.clear();
@@ -126,37 +131,39 @@ int main(int argc, char* argv[]) {
                 reachedEnd = true;
                 break;
             }
-            trEntry & curEntry = trace[prioIt->second];
-            //            OLOG("test",i,ejectNodes.size(),0);
-            GLOG("lnsG",prioIt->second,curEntry.hasNext,trace.size());
-            arcId = curEntry.innerArcId;
-            curGNode = INVALID;
-            if(curEntry.hasNext) {
-                curGNode = g.source(g.arcFromId(arcId));
-            } else if (prioIt->second>=trace.size()-1) {
-                // at end of trace we add the last node
-                curGNode = g.target(g.arcFromId(arcId));
-            }
-            // add node to lns graph
-            if(curGNode != INVALID) {
-                const int64_t curId = g.id(curGNode);
-                ejectNodes.insert(curId);
-                SmartDigraph::InArcIt ia(g, curGNode);
-                while(ia!=INVALID) {
-                    const int64_t curId = g.id(g.source(ia));
-                    ejectNodes.insert(curId);
-                    ++ia;
+            for(size_t i: prioIt->second) {
+                trEntry & curEntry = trace[i];
+                //            OLOG("test",i,ejectNodes.size(),0);
+                GLOG("lnsG",i,curEntry.hasNext,trace.size());
+                arcId = curEntry.innerArcId;
+                curGNode = INVALID;
+                if(curEntry.hasNext) {
+                    curGNode = g.source(g.arcFromId(arcId));
+                } else if (i>=trace.size()-1) {
+                    // at end of trace we add the last node
+                    curGNode = g.target(g.arcFromId(arcId));
                 }
-                SmartDigraph::OutArcIt oa(g, curGNode);
-                while(oa!=INVALID) {
-                    const int64_t curId = g.id(g.target(oa));
+                // add node to lns graph
+                if(curGNode != INVALID) {
+                    const int64_t curId = g.id(curGNode);
                     ejectNodes.insert(curId);
-                    ++oa;
+                    SmartDigraph::InArcIt ia(g, curGNode);
+                    while(ia!=INVALID) {
+                        const int64_t curId = g.id(g.source(ia));
+                        ejectNodes.insert(curId);
+                        ++ia;
+                    }
+                    SmartDigraph::OutArcIt oa(g, curGNode);
+                    while(oa!=INVALID) {
+                        const int64_t curId = g.id(g.target(oa));
+                        ejectNodes.insert(curId);
+                        ++oa;
+                    }
                 }
-            }
-            if(!curEntry.processed) {
-                curEntry.processed = true;
-                processedCount++;
+                if(!curEntry.processed) {
+                    curEntry.processed = true;
+                    processedCount++;
+                }
             }
         }
         //        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
@@ -336,6 +343,14 @@ int main(int argc, char* argv[]) {
 
         SmartDigraph::ArcIt aIt;
 
+        tg = std::chrono::high_resolution_clock::now();
+        GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
+
+        // solve the local MCF
+        long double mcfSol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
+        tmcf = std::chrono::high_resolution_clock::now();
+
+
 #ifdef GDEBUG
         SmartDigraph::NodeIt nIt(lnsG);
         do {
@@ -344,19 +359,19 @@ int main(int argc, char* argv[]) {
 
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
-            GLOG("l arc\t"+std::to_string(lnsToGNodeId[lnsG.source(aIt)]),
-                 lnsToGNodeId[lnsG.target(aIt)],
+            GLOG("l arc\t"+
+                 std::to_string(lnsToGNodeId[lnsG.source(aIt)])+
+                 "->"+
+                 std::to_string(lnsToGNodeId[lnsG.target(aIt)]),
                  lnsCost[aIt],
-                 lnsCap[aIt]);
+                 lnsCap[aIt],
+                 lnsFlow[aIt]);
         } while (++aIt!=INVALID);
 #endif
 
-        tg = std::chrono::high_resolution_clock::now();
-        GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
-        // solve the local MCF
-        long double mcfSol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
-        tmcf = std::chrono::high_resolution_clock::now();
+
+
 
 // node potentials based on network simplex
 
@@ -427,6 +442,8 @@ int main(int argc, char* argv[]) {
              ejectNodes.size(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
              );
+
+        return 0;
 
     }
    

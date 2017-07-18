@@ -15,7 +15,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     while(traceFile >> time >> id >> size) {
         if(lastSeen.count(std::make_pair(id,size))>0) {
             trace[lastSeen[std::make_pair(id,size)]].hasNext = true;
-            const long double intervalLength = reqc-lastSeen[std::make_pair(id,size)];
+            const double intervalLength = reqc-lastSeen[std::make_pair(id,size)];
             assert(intervalLength>0);
             trace[lastSeen[std::make_pair(id,size)]].iLen = intervalLength;
         } else {
