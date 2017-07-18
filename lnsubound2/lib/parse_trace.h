@@ -41,17 +41,21 @@ using namespace lemon;
 // trace entry
 struct trEntry {
     const uint64_t id;
-    const uint64_t size;
+    const int64_t size;
     const uint64_t origTime;
     //    double lcost;
+    double iLen;
     bool hasNext;
+    bool processed;
     int64_t innerArcId;
     trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
         : id(nid),
           size(nsize),
           origTime(ntime),
           //          lcost(0),
+          iLen(-1),
           hasNext(false),
+          processed(false),
           innerArcId(-1)
     {
     };

@@ -6,6 +6,7 @@
 #include <cassert>
 #include <unordered_set>
 #include <unordered_map>
+#include <map>
 #include <vector>
 #include <queue>
 #include <tuple>
@@ -78,7 +79,23 @@ int main(int argc, char* argv[]) {
     if(maxEjectSize > totalReqc) {
         maxEjectSize = totalReqc + 1;
     }
-    
+
+    // ordered list of utilities and check that objects have size less than cache size
+    std::multimap<double, size_t> prio;
+    for(size_t i=0; i<trace.size(); i++) {
+        auto & it = trace[i];
+        if(it.size > cacheSize) {
+            it.hasNext = false;
+        }
+        if(it.hasNext) {
+            if(it.iLen < 0) {
+                OLOG("fail",it.origTime,it.size,it.iLen);
+            }
+            assert(it.iLen>=0);
+            prio.insert(std::make_pair(it.iLen * it.size, i));
+        }
+    }
+
     // tmp variables
     SmartDigraph::Arc curArc;
     SmartDigraph::Node curLnsNode;
@@ -93,47 +110,30 @@ int main(int argc, char* argv[]) {
     std::unordered_set<int64_t> ejectNodes;
 
     // iterate over graph again
-    size_t kmin=trace.size()-1;
     bool reachedEnd = false;
-        
-    while(!reachedEnd) {
-        OLOG("start",kmin,0,maxEjectSize);
-        ts = std::chrono::high_resolution_clock::now();
+    auto prioIt=--(prio.end());
+    uint64_t processedCount = 0;
 
-        // LNS graph structure
-        SmartDigraph lnsG; // mcf graph
-        extraNode = lnsG.addNode();
-        nodeCount = 0;
-        arcCount = 0;
-        extraArcCount = 0;
+    while(!reachedEnd) {
+        OLOG("start",prioIt->first,prioIt->second,maxEjectSize);
+        ts = std::chrono::high_resolution_clock::now();
         // LNS iteration step state
         ejectNodes.clear();
-        // graph min cost flow information
-        SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
-        SmartDigraph::ArcMap<long double> lnsCost(lnsG); // mcf costs
-        SmartDigraph::NodeMap<int64_t> lnsSupply(lnsG); // mcf demands/supply
-        SmartDigraph::ArcMap<int64_t> lnsFlow(lnsG); // in units of flow
-        // temporary pi -- actually unused
-        SmartDigraph::NodeMap<long double> lnsPi(lnsG);
-        // to map back results to g graph
-        SmartDigraph::NodeMap<int64_t> lnsToGNodeId(lnsG);
-        SmartDigraph::NodeMap<int64_t> gtoLnsNodeId(g);
-        lnsToGNodeId[extraNode] = -1;
-        SmartDigraph::ArcMap<int64_t> lnsToGArcId(lnsG);
 
         // mark nodes for the ejection set
-        
-        while(kmin-- >0 && ejectNodes.size() <= maxEjectSize) {
-            if(kmin==0)
+        while(ejectNodes.size() <= maxEjectSize) {
+            if(--prioIt == prio.begin()) {
                 reachedEnd = true;
-            const trEntry & curEntry = trace[kmin];
+                break;
+            }
+            trEntry & curEntry = trace[prioIt->second];
             //            OLOG("test",i,ejectNodes.size(),0);
-            GLOG("lnsG",kmin,curEntry.hasNext,trace.size());
+            GLOG("lnsG",prioIt->second,curEntry.hasNext,trace.size());
             arcId = curEntry.innerArcId;
             curGNode = INVALID;
             if(curEntry.hasNext) {
                 curGNode = g.source(g.arcFromId(arcId));
-            } else if (kmin==trace.size()) {
+            } else if (prioIt->second>=trace.size()-1) {
                 // at end of trace we add the last node
                 curGNode = g.target(g.arcFromId(arcId));
             }
@@ -154,8 +154,32 @@ int main(int argc, char* argv[]) {
                     ++oa;
                 }
             }
+            if(!curEntry.processed) {
+                curEntry.processed = true;
+                processedCount++;
+            }
         }
         //        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
+
+        // LNS graph structure
+        SmartDigraph lnsG; // mcf graph
+        extraNode = lnsG.addNode();
+        nodeCount = 0;
+        arcCount = 0;
+        extraArcCount = 0;
+        // graph min cost flow information
+        SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
+        SmartDigraph::ArcMap<long double> lnsCost(lnsG); // mcf costs
+        SmartDigraph::NodeMap<int64_t> lnsSupply(lnsG); // mcf demands/supply
+        SmartDigraph::ArcMap<int64_t> lnsFlow(lnsG); // in units of flow
+        // temporary pi -- actually unused
+        SmartDigraph::NodeMap<long double> lnsPi(lnsG);
+        // to map back results to g graph
+        SmartDigraph::NodeMap<int64_t> lnsToGNodeId(lnsG);
+        SmartDigraph::NodeMap<int64_t> gtoLnsNodeId(g);
+        lnsToGNodeId[extraNode] = -1;
+        SmartDigraph::ArcMap<int64_t> lnsToGArcId(lnsG);
+
 
         // create lns graph nodes
         int64_t totalSupply = 0;
@@ -172,7 +196,7 @@ int main(int argc, char* argv[]) {
         }
         lnsSupply[extraNode] = -totalSupply;
 
-        GLOG("ejectSize",kmin,0,ejectNodes.size());
+        GLOG("ejectSize",processedCount,0,ejectNodes.size());
 
         for(int64_t curNodeId: ejectNodes) {
             curGNode = g.nodeFromId(curNodeId);
@@ -398,7 +422,7 @@ int main(int argc, char* argv[]) {
         //      std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
         //      std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
         //      );
-        OLOG("local dual val\t"+std::to_string(kmin+1)+"\t"+std::to_string(localDualValue),
+        OLOG("local dual val\t"+std::to_string(processedCount)+"\t"+std::to_string(localDualValue),
              mcfSol,
              ejectNodes.size(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
@@ -434,7 +458,7 @@ int main(int argc, char* argv[]) {
               alpha[aIt] * cap[aIt]);
     } while (++aIt!=INVALID);
     
-    OLOG("global dual val",dualVal,static_cast<long double>(totalReqc-totalUniqC)/totalReqc,static_cast<long double>(totalReqc-totalUniqC-dualVal)/totalReqc);
+    OLOG("global dual val\t"+std::to_string(dualVal),totalReqc-totalUniqC,static_cast<long double>(totalReqc-totalUniqC)/totalReqc,static_cast<long double>(totalReqc-totalUniqC-dualVal)/totalReqc);
 
     //    std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
     //    std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
@@ -451,7 +475,6 @@ int main(int argc, char* argv[]) {
     //         resultfile << 0 << "\n";
     //     }
     // }
-
 
     return 0;
 }
