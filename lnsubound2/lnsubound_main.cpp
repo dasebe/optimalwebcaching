@@ -16,20 +16,19 @@
 
 using namespace lemon;
 
-#define ZEROEPSILONSET 1e-9
-#define ZEROEPSILONCHECK 1e-6
-
 int main(int argc, char* argv[]) {
 
-    if (argc != 5) {
-        std::cerr << argv[0] << " traceFile cacheSize maxEjectSize resultPath" << std::endl;
+    if (argc != 6) {
+        std::cerr << argv[0] << " traceFile cacheSize maxEjectSize eps epsAss" << std::endl;
         return 1;
     }
 
     std::string path(argv[1]);
-    int64_t cacheSize(atoll(argv[2]));
+    int64_t cacheSize(std::stoll(argv[2]));
     uint64_t maxEjectSize(std::stoull(argv[3]));
-    std::string resultPath(argv[4]);
+    long double epsilon(std::stold(argv[4]));
+    long double epsilonAssert(std::stold(argv[5]));
+    //    std::string resultPath(argv[4]);
 
     // parse trace file
     std::vector<trEntry> trace;
@@ -89,13 +88,16 @@ int main(int argc, char* argv[]) {
     long double extraArcCost1, extraArcCost2;
     bool extraArcFlag1, extraArcFlag2;
     uint64_t extraArcCount;
-    size_t traceIndex=0, traceHalfIndex = 0;
     long double localDualValue;
     std::chrono::high_resolution_clock::time_point ts, tg, tmcf;
+    std::unordered_set<int64_t> ejectNodes;
 
     // iterate over graph again
-    for(size_t kmin=trace.size(); kmin>0; kmin=traceHalfIndex) {
-        OLOG("start config",kmin,traceIndex,maxEjectSize);
+    size_t kmin=trace.size()-1;
+    bool reachedEnd = false;
+        
+    while(!reachedEnd) {
+        OLOG("start",kmin,0,maxEjectSize);
         ts = std::chrono::high_resolution_clock::now();
 
         // LNS graph structure
@@ -105,7 +107,7 @@ int main(int argc, char* argv[]) {
         arcCount = 0;
         extraArcCount = 0;
         // LNS iteration step state
-        std::unordered_set<int64_t> ejectNodes;
+        ejectNodes.clear();
         // graph min cost flow information
         SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
         SmartDigraph::ArcMap<long double> lnsCost(lnsG); // mcf costs
@@ -115,24 +117,23 @@ int main(int argc, char* argv[]) {
         SmartDigraph::NodeMap<long double> lnsPi(lnsG);
         // to map back results to g graph
         SmartDigraph::NodeMap<int64_t> lnsToGNodeId(lnsG);
-        SmartDigraph::NodeMap<int64_t> lnsToTraceI(lnsG);
         SmartDigraph::NodeMap<int64_t> gtoLnsNodeId(g);
         lnsToGNodeId[extraNode] = -1;
         SmartDigraph::ArcMap<int64_t> lnsToGArcId(lnsG);
 
         // mark nodes for the ejection set
-        traceIndex = kmin;
-        traceHalfIndex = maxEjectSize/4;
-
-        while(ejectNodes.size()<=maxEjectSize && traceIndex>0) {
-            const trEntry & curEntry = trace[traceIndex-1];
-            //            OLOG("test",traceIndex,ejectNodes.size(),0);
-            GLOG("lnsG",traceIndex,curEntry.hasNext,trace.size());
+        
+        while(kmin-- >0 && ejectNodes.size() <= maxEjectSize) {
+            if(kmin==0)
+                reachedEnd = true;
+            const trEntry & curEntry = trace[kmin];
+            //            OLOG("test",i,ejectNodes.size(),0);
+            GLOG("lnsG",kmin,curEntry.hasNext,trace.size());
             arcId = curEntry.innerArcId;
             curGNode = INVALID;
             if(curEntry.hasNext) {
                 curGNode = g.source(g.arcFromId(arcId));
-            } else if (traceIndex==trace.size()) {
+            } else if (kmin==trace.size()) {
                 // at end of trace we add the last node
                 curGNode = g.target(g.arcFromId(arcId));
             }
@@ -153,13 +154,6 @@ int main(int argc, char* argv[]) {
                     ++oa;
                 }
             }
-            // increment index
-            traceIndex--;
-            // save half time to move forward for loop
-            if (ejectNodes.size()>maxEjectSize) {
-                traceHalfIndex = traceIndex;
-                break;
-            }
         }
         //        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
 
@@ -174,14 +168,11 @@ int main(int argc, char* argv[]) {
             totalSupply += lnsSupply[curLnsNode];
             // establish mapping
             lnsToGNodeId[curLnsNode] = nodeId;
-            lnsToTraceI[curLnsNode] = traceIndex;
             gtoLnsNodeId[curGNode] = lnsG.id(curLnsNode);
         }
         lnsSupply[extraNode] = -totalSupply;
 
-        GLOG("ejectSize",kmin,traceIndex,ejectNodes.size());
-
-        GLOG("trIndex",kmin,traceIndex,0);
+        GLOG("ejectSize",kmin,0,ejectNodes.size());
 
         for(int64_t curNodeId: ejectNodes) {
             curGNode = g.nodeFromId(curNodeId);
@@ -220,23 +211,7 @@ int main(int argc, char* argv[]) {
                 // move loop forward
                 ++ia;
             }
-            // add incoming arc from EXTRANODE
-            if(extraArcFlag1) {
-                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost1);
-                    curArc = lnsG.addArc(extraNode,curLnsNode);
-                    extraArcCount++;
-                    if(std::abs(extraArcCost1) <= ZEROEPSILONSET) {
-                        extraArcCost1 = 0;
-                    }
-                    lnsCost[curArc] = extraArcCost1;
-                    if(lnsCost[curArc]<0) {
-                        lnsCap[curArc] = std::numeric_limits<int64_t>::max();
-                    } else {
-                        lnsCap[curArc] = std::numeric_limits<int64_t>::max()-1;
-                    }
-                    lnsToGArcId[curArc] = -1;
-            }
-        
+      
 
 
             // OUTGOING ARCS
@@ -271,21 +246,23 @@ int main(int argc, char* argv[]) {
                 }
                 ++oa;
             }
-            // add outgoing arc to EXTRANODE
-            if(extraArcFlag2) {
-                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost2);
-                    curArc = lnsG.addArc(curLnsNode,extraNode);
-                    extraArcCount++;
-                    if(std::abs(extraArcCost2) <= ZEROEPSILONSET) {
-                        extraArcCost2 = 0;
-                    }
-                    lnsCost[curArc] = extraArcCost2;
-                    if(lnsCost[curArc]<0) {
-                        lnsCap[curArc] = std::numeric_limits<int64_t>::max();
-                    } else {
-                        lnsCap[curArc] = std::numeric_limits<int64_t>::max()-1;
-                    }
-                    lnsToGArcId[curArc] = -1;
+
+
+
+            // fix rounding errors in EXTRAarc cost
+            if(std::abs(extraArcCost1) <= epsilon) {
+                extraArcCost1 = 0;
+            }
+            if(std::abs(extraArcCost2) <= epsilon) {
+                extraArcCost2 = 0;
+            }
+
+            if(extraArcCost1<0 && -extraArcCost1 > extraArcCost2) {
+                extraArcCost1 = -extraArcCost2;
+            }
+
+            if(extraArcCost2<0 && -extraArcCost2 > extraArcCost1) {
+                extraArcCost2 = -extraArcCost1;
             }
 
             if(extraArcFlag1 && extraArcFlag2) {
@@ -297,6 +274,40 @@ int main(int argc, char* argv[]) {
                     OLOG("neg cost cycle",curNodeId,extraArcCost1,extraArcCost2);
                 }
             }
+
+
+
+            // add incoming arc from EXTRANODE
+            if(extraArcFlag1) {
+                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost1);
+                    curArc = lnsG.addArc(extraNode,curLnsNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost1;
+                    if(lnsCost[curArc]<0) {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    } else {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max()-1;
+                    }
+                    lnsToGArcId[curArc] = -1;
+            }
+
+
+
+
+            // add outgoing arc to EXTRANODE
+            if(extraArcFlag2) {
+                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost2);
+                    curArc = lnsG.addArc(curLnsNode,extraNode);
+                    extraArcCount++;
+                    lnsCost[curArc] = extraArcCost2;
+                    if(lnsCost[curArc]<0) {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max();
+                    } else {
+                        lnsCap[curArc] = std::numeric_limits<int64_t>::max()-1;
+                    }
+                    lnsToGArcId[curArc] = -1;
+            }
+
         }
 
         SmartDigraph::ArcIt aIt;
@@ -317,10 +328,10 @@ int main(int argc, char* argv[]) {
 #endif
 
         tg = std::chrono::high_resolution_clock::now();
-        OLOG("createdLNS",nodeCount,arcCount,extraArcCount);
+        GLOG("createdLNS",nodeCount,arcCount,extraArcCount);
 
         // solve the local MCF
-        double mcfSol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
+        long double mcfSol = solveMCF(lnsG, lnsCap, lnsCost, lnsSupply, lnsFlow, 4, lnsPi);
         tmcf = std::chrono::high_resolution_clock::now();
 
 // node potentials based on network simplex
@@ -350,7 +361,7 @@ int main(int argc, char* argv[]) {
             const long double cij = lnsCost[aIt];
             long double curAlpha = piI - piJ - cij;
             // correct negative alphas and rounding errors
-            if(curAlpha < 0 || std::abs(curAlpha) <= ZEROEPSILONSET) {
+            if(curAlpha < 0 || std::abs(curAlpha) <= epsilon) {
                 curAlpha = 0.0L;
             }
 
@@ -365,7 +376,7 @@ int main(int argc, char* argv[]) {
                 alpha[g.arcFromId(lnsToGArcId[aIt])] = curAlpha;
             } else {
                 // ensure that alpha for extra arcs are zero
-                assert(std::abs(curAlpha) <= ZEROEPSILONCHECK);
+                assert(std::abs(curAlpha) <= epsilonAssert);
             };
             // update local dual objective
             localDualValue -= curAlpha * lnsCap[aIt];
@@ -387,7 +398,7 @@ int main(int argc, char* argv[]) {
         //      std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
         //      std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
         //      );
-        OLOG("local dual val\t"+std::to_string(kmin)+"\t"+std::to_string(localDualValue),
+        OLOG("local dual val\t"+std::to_string(kmin+1)+"\t"+std::to_string(localDualValue),
              mcfSol,
              ejectNodes.size(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
@@ -423,7 +434,7 @@ int main(int argc, char* argv[]) {
               alpha[aIt] * cap[aIt]);
     } while (++aIt!=INVALID);
     
-    OLOG("global dual val",dualVal,double(totalReqc-totalUniqC)/totalReqc,double(totalReqc-totalUniqC-dualVal)/totalReqc);
+    OLOG("global dual val",dualVal,static_cast<long double>(totalReqc-totalUniqC)/totalReqc,static_cast<long double>(totalReqc-totalUniqC-dualVal)/totalReqc);
 
     //    std::cerr << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
     //    std::cout << "UPB_LNS " << maxEjectSize << " " << cacheSize << " hitc " << hitCount << " reqc " << totalReqc << " OHR " << (static_cast<double>(hitCount))/totalReqc << std::endl;
