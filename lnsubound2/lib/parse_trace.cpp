@@ -27,7 +27,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     return uniqc;
 }
 
-SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies) {
+SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, SmartDigraph::NodeMap<int64_t> & nodeIndex) {
 
     // we consider (id,size) as unique identification of an object (sizes can change, but then it's a different object)
     // lastSeen maps (id,size) to (nodeId,traceIndex) of the last time this object was seen
@@ -62,6 +62,8 @@ SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uin
             curInnerArc = g.addArc(prevNode,curNode);
             cap[curInnerArc] = cacheSize; 
             cost[curInnerArc] = 0;
+            // update node to trace index map
+            nodeIndex[prevNode] = i;
         }
         // set current inner arc id
         curEntry.innerArcId = g.id(curInnerArc);

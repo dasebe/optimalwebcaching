@@ -3,7 +3,7 @@
 #include <lemon/smart_graph.h>
 
 // uncomment to enable graph debugging:
-#define GDEBUG 1
+//#define GDEBUG 1
 // uncomment to enable lastSeen debugging:
 //#define LDEBUG 1
 // uncomment to enable other debugging:
@@ -83,4 +83,4 @@ namespace std
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path);
 
-SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies);
+SmartDigraph::Node createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, SmartDigraph::NodeMap<int64_t> & nodeIndex);

@@ -15,165 +15,32 @@
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
+#define EPSILON 1e-9
+#define EPSILONASSERT 1e-6
+
 using namespace lemon;
 
-int main(int argc, char* argv[]) {
+void solveLns(std::unordered_set<int64_t> & ejectNodes, SmartDigraph & g, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<long double> & cost, SmartDigraph::NodeMap<int64_t> & supply, SmartDigraph::NodeMap<long double> & pi, SmartDigraph::ArcMap<long double> & alpha) {
 
-    if (argc != 6) {
-        std::cerr << argv[0] << " traceFile cacheSize maxEjectSize eps epsAss" << std::endl;
-        return 1;
-    }
 
-    std::string path(argv[1]);
-    int64_t cacheSize(std::stoll(argv[2]));
-    uint64_t maxEjectSize(std::stoull(argv[3]));
-    long double epsilon(std::stold(argv[4]));
-    long double epsilonAssert(std::stold(argv[5]));
-    //    std::string resultPath(argv[4]);
-
-    // parse trace file
-    std::vector<trEntry> trace;
-    OLOG("opening trace",0,0,0);
-    uint64_t totalUniqC = parseTraceFile(trace, path);
-    uint64_t totalReqc = trace.size();
-    OLOG("scanned trace",totalReqc,totalUniqC,0);
-
-    // create mcf instance
-    SmartDigraph g; // mcf graph
-    SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
-    SmartDigraph::ArcMap<long double> cost(g); // mcf costs
-    SmartDigraph::NodeMap<int64_t> supply(g); // mcf demands/supply
-    createMCF(g, trace, cacheSize, cap, cost, supply);
-    OLOG("finished g",totalReqc,totalUniqC,0);
-    
-    // LNS constants
-    long double highestCost = -1;
-
-    // dual-feasible solution: all alpha and pi are 0
-    uint64_t nodeCount = 0, arcCount = 0;
-    long double dualSol = 0;
-    SmartDigraph::NodeMap<long double> pi(g);
-    SmartDigraph::ArcMap<long double> alpha(g);
-
-    SmartDigraph::NodeIt n(g);
-    do {
-        ++nodeCount;
-        pi[n] = 0;
-        dualSol += pi[n] * supply[n];
-        //GLOG("g node",g.id(n),supply[n],0);
-    } while (++n != INVALID);
-    SmartDigraph::ArcIt a(g);
-    do {
-        ++arcCount;
-        alpha[a] = 0;
-        dualSol -= alpha[a] * cap[a];
-        const long double curCost = cost[a];
-        if(highestCost > curCost || highestCost==-1) {
-            highestCost = curCost;
-        }
-        //GLOG("g arc",g.id(g.source(a)),g.id(g.target(a)),cost[a]);
-    } while (++a != INVALID);
-    OLOG("finished dual init",nodeCount,arcCount,dualSol);
-
-    // max ejection size mustn't be larger than actual trace
-    if(maxEjectSize > totalReqc) {
-        maxEjectSize = totalReqc + 1;
-    }
-
-    // ordered list of utilities and check that objects have size less than cache size
-    typedef std::multimap<double, std::vector<size_t> > prioMap_t;
-    prioMap_t prio;
-    std::unordered_map<std::pair<uint64_t, uint64_t>, prioMap_t::iterator> idPrioMap;
-    for(size_t i=0; i<trace.size(); i++) {
-        auto & it = trace[i];
-        if(it.size > cacheSize) {
-            it.hasNext = false;
-        }
-        if(it.hasNext) {
-            assert(it.iLen>=0);
-            auto idSize = std::make_pair(it.id, it.size);
-            if( idPrioMap.count(idSize) > 0) {
-                (idPrioMap[idSize]->second).push_back(i);
-            } else {
-                const double prioVal = it.iLen * it.size;
-                idPrioMap[idSize] = prio.insert(std::make_pair(prioVal, std::vector<size_t>{i}));
-            }
-        }
-    }
 
     // tmp variables
     SmartDigraph::Arc curArc;
     SmartDigraph::Node curLnsNode;
     SmartDigraph::Node curGNode;
     SmartDigraph::Node extraNode;
-    int64_t arcId;
     long double extraArcCost1, extraArcCost2;
     bool extraArcFlag1, extraArcFlag2;
-    uint64_t extraArcCount;
     long double localDualValue;
     std::chrono::high_resolution_clock::time_point ts, tg, tmcf;
-    std::unordered_set<int64_t> ejectNodes;
+    ts = std::chrono::high_resolution_clock::now();
 
-    // iterate over graph again
-    bool reachedEnd = false;
-    auto prioIt=--(prio.end());
-    uint64_t processedCount = 0;
 
-    while(!reachedEnd) {
-        OLOG("start",prioIt->first,(prioIt->second).size(),maxEjectSize);
-        ts = std::chrono::high_resolution_clock::now();
-        // LNS iteration step state
-        ejectNodes.clear();
 
-        // mark nodes for the ejection set
-        while(ejectNodes.size() <= maxEjectSize) {
-            if(--prioIt == prio.begin()) {
-                reachedEnd = true;
-                break;
-            }
-            for(size_t i: prioIt->second) {
-                trEntry & curEntry = trace[i];
-                //            OLOG("test",i,ejectNodes.size(),0);
-                GLOG("lnsG",i,curEntry.hasNext,trace.size());
-                arcId = curEntry.innerArcId;
-                curGNode = INVALID;
-                if(curEntry.hasNext) {
-                    curGNode = g.source(g.arcFromId(arcId));
-                } else if (i>=trace.size()-1) {
-                    // at end of trace we add the last node
-                    curGNode = g.target(g.arcFromId(arcId));
-                }
-                // add node to lns graph
-                if(curGNode != INVALID) {
-                    const int64_t curId = g.id(curGNode);
-                    ejectNodes.insert(curId);
-                    SmartDigraph::InArcIt ia(g, curGNode);
-                    while(ia!=INVALID) {
-                        const int64_t curId = g.id(g.source(ia));
-                        ejectNodes.insert(curId);
-                        ++ia;
-                    }
-                    SmartDigraph::OutArcIt oa(g, curGNode);
-                    while(oa!=INVALID) {
-                        const int64_t curId = g.id(g.target(oa));
-                        ejectNodes.insert(curId);
-                        ++oa;
-                    }
-                }
-                if(!curEntry.processed) {
-                    curEntry.processed = true;
-                    processedCount++;
-                }
-            }
-        }
-        //        OLOG("ejectSet",kmin,ejectNodes.size(),maxEjectSize);
-
-        // LNS graph structure
+    // LNS graph structure
         SmartDigraph lnsG; // mcf graph
         extraNode = lnsG.addNode();
-        nodeCount = 0;
-        arcCount = 0;
-        extraArcCount = 0;
+        uint64_t nodeCount = 0, arcCount = 0, extraArcCount = 0;
         // graph min cost flow information
         SmartDigraph::ArcMap<int64_t> lnsCap(lnsG); // mcf capacities
         SmartDigraph::ArcMap<long double> lnsCost(lnsG); // mcf costs
@@ -203,7 +70,7 @@ int main(int argc, char* argv[]) {
         }
         lnsSupply[extraNode] = -totalSupply;
 
-        GLOG("ejectSize",processedCount,0,ejectNodes.size());
+        GLOG("ejectSize",0,0,ejectNodes.size());
 
         for(int64_t curNodeId: ejectNodes) {
             curGNode = g.nodeFromId(curNodeId);
@@ -211,15 +78,15 @@ int main(int argc, char* argv[]) {
 
             // INCOMING ARCS
             extraArcFlag1 = false;
-            extraArcCost1 = highestCost+1;
+            extraArcCost1 = std::numeric_limits<double>::max();
             SmartDigraph::InArcIt ia(g, curGNode);
             while(ia!=INVALID) {
                 const SmartDigraph::Node incSrcNode = g.source(ia);
                 const int64_t incSrcNodeId = g.id(incSrcNode);
-                GLOG("inc",curNodeId,incSrcNodeId,0);
+                //                GLOG("inc",curNodeId,incSrcNodeId,0);
                 if(ejectNodes.count(incSrcNodeId)!=0) {
                     // incoming from ejection set
-                    GLOG("add arc ii",incSrcNodeId,curNodeId,cost[ia]);
+                    //                    GLOG("add arc ii",incSrcNodeId,curNodeId,cost[ia]);
                     curArc = lnsG.addArc(
                                          lnsG.nodeFromId(gtoLnsNodeId[incSrcNode]),
                                          curLnsNode
@@ -232,7 +99,7 @@ int main(int argc, char* argv[]) {
                     // incoming node not in ejection set
                     // c^tile_ij = cij + aij - pi
                     const long double curCost = cost[ia] + alpha[ia] - pi[incSrcNode];
-                    GLOG("extraCost ie",curNodeId,incSrcNodeId,cost[ia]);
+                    //                    GLOG("extraCost ie",curNodeId,incSrcNodeId,cost[ia]);
                     // min over all extra arc costs
                     if(curCost < extraArcCost1) {
                         extraArcCost1 = curCost;
@@ -247,12 +114,12 @@ int main(int argc, char* argv[]) {
 
             // OUTGOING ARCS
             extraArcFlag2 = false;
-            extraArcCost2 = highestCost+1;
+            extraArcCost2 = std::numeric_limits<double>::max();
             SmartDigraph::OutArcIt oa(g, curGNode);
             while(oa!=INVALID) {
                 const SmartDigraph::Node outTrgtNode = g.target(oa);
                 const int64_t outTrgtNodeId = g.id(outTrgtNode);
-                GLOG("out",curNodeId,outTrgtNodeId,0);
+                //                GLOG("out",curNodeId,outTrgtNodeId,0);
                 if(ejectNodes.count(outTrgtNodeId)!=0) {
                     // constructing both incoming and outgoing arcs would lead to duplicates
                     // outgoing to ejection set
@@ -268,7 +135,7 @@ int main(int argc, char* argv[]) {
                     // outgoing node not in ejection set
                     // c^tile_ij = cij + aij + pi
                     const long double curExtraArcCost = cost[oa] + alpha[oa] + pi[outTrgtNode];
-                    GLOG("extraCost oe",curNodeId,outTrgtNodeId,cost[oa]);
+                    //                    GLOG("extraCost oe",curNodeId,outTrgtNodeId,cost[oa]);
                     // min over all extra arc costs
                     if(curExtraArcCost < extraArcCost2) {
                         extraArcCost2 = curExtraArcCost;
@@ -281,10 +148,10 @@ int main(int argc, char* argv[]) {
 
 
             // fix rounding errors in EXTRAarc cost
-            if(std::abs(extraArcCost1) <= epsilon) {
+            if(std::abs(extraArcCost1) <= EPSILON) {
                 extraArcCost1 = 0;
             }
-            if(std::abs(extraArcCost2) <= epsilon) {
+            if(std::abs(extraArcCost2) <= EPSILON) {
                 extraArcCost2 = 0;
             }
 
@@ -310,7 +177,7 @@ int main(int argc, char* argv[]) {
 
             // add incoming arc from EXTRANODE
             if(extraArcFlag1) {
-                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost1);
+                //                    GLOG("add arc ie",lnsToGNodeId[extraNode],curNodeId,extraArcCost1);
                     curArc = lnsG.addArc(extraNode,curLnsNode);
                     extraArcCount++;
                     lnsCost[curArc] = extraArcCost1;
@@ -327,7 +194,7 @@ int main(int argc, char* argv[]) {
 
             // add outgoing arc to EXTRANODE
             if(extraArcFlag2) {
-                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost2);
+                //                    GLOG("add arc oe",curNodeId,lnsToGNodeId[extraNode],extraArcCost2);
                     curArc = lnsG.addArc(curLnsNode,extraNode);
                     extraArcCount++;
                     lnsCost[curArc] = extraArcCost2;
@@ -352,20 +219,22 @@ int main(int argc, char* argv[]) {
 
 
 #ifdef GDEBUG
-        SmartDigraph::NodeIt nIt(lnsG);
-        do {
-            GLOG("lns g node",lnsToGNodeId[nIt],lnsSupply[nIt],lnsG.id(nIt));
-        } while (++nIt!=INVALID);
-
+        // SmartDigraph::NodeIt nIt(lnsG);
+        // do {
+        //     GLOG("lns g node",lnsToGNodeId[nIt],lnsSupply[nIt],lnsG.id(nIt));
+        // } while (++nIt!=INVALID);
+        
+        
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
-            GLOG("l arc\t"+
-                 std::to_string(lnsToGNodeId[lnsG.source(aIt)])+
-                 "->"+
-                 std::to_string(lnsToGNodeId[lnsG.target(aIt)]),
-                 lnsCost[aIt],
-                 lnsCap[aIt],
-                 lnsFlow[aIt]);
+            // GLOG("l arc\t"+
+            //      std::to_string(lnsToGNodeId[lnsG.source(aIt)])+
+            //      "->"+
+            //      std::to_string(lnsToGNodeId[lnsG.target(aIt)]),
+            //      lnsCost[aIt],
+            //      lnsCap[aIt],
+            //      lnsFlow[aIt]);
+            
         } while (++aIt!=INVALID);
 #endif
 
@@ -377,7 +246,10 @@ int main(int argc, char* argv[]) {
 
         // PIs are all x(-1) and we need PI[extranode]=0 so subtract it everywhere
         // do this while we compute local dual value (first pi sum)
+
         localDualValue = 0;
+        // just some stats
+        uint64_t zeroAlpha = 0, zeroPi=0, closeZeroPi = 0, nonzAlpha=0, nonzPi=0;
         const long double piOffset = -lnsPi[extraNode];
         SmartDigraph::NodeIt nIt2(lnsG);
         do {
@@ -385,12 +257,20 @@ int main(int argc, char* argv[]) {
                 lnsPi[nIt2] = -lnsPi[nIt2] - piOffset;
                 localDualValue += lnsPi[nIt2] * lnsSupply[nIt2];
                 pi[g.nodeFromId(lnsToGNodeId[nIt2])] = lnsPi[nIt2];
+                // extra stats
+                if(lnsPi[nIt2] == 0)
+                    zeroPi ++;
+                else if(std::abs(lnsPi[nIt2]) <= EPSILON) {
+                    closeZeroPi ++;
+                } else
+                    nonzPi++;
             } else {
                 lnsPi[extraNode] = 0;
             }
             PILOG("local pi",lnsToGNodeId[nIt2],lnsPi[nIt2],lnsSupply[nIt2]);
         } while (++nIt2!=INVALID);
         PILOG("local pi sum",localDualValue,0,0);
+        OLOG("PIstats",zeroPi,closeZeroPi,nonzPi);
 
         aIt = SmartDigraph::ArcIt(lnsG);
         do {
@@ -400,7 +280,7 @@ int main(int argc, char* argv[]) {
             const long double cij = lnsCost[aIt];
             long double curAlpha = piI - piJ - cij;
             // correct negative alphas and rounding errors
-            if(curAlpha < 0 || std::abs(curAlpha) <= epsilon) {
+            if(curAlpha < 0 || std::abs(curAlpha) <= EPSILON) {
                 curAlpha = 0.0L;
             }
 
@@ -413,37 +293,167 @@ int main(int argc, char* argv[]) {
             if(lnsG.source(aIt)!=extraNode && lnsG.target(aIt)!=extraNode) {
                 assert(lnsToGArcId[aIt] != -1);
                 alpha[g.arcFromId(lnsToGArcId[aIt])] = curAlpha;
+                if(std::abs(curAlpha) <= EPSILON) {
+                    zeroAlpha++;
+                } else
+                    nonzAlpha++;
             } else {
                 // ensure that alpha for extra arcs are zero
-                assert(std::abs(curAlpha) <= epsilonAssert);
+                assert(std::abs(curAlpha) <= EPSILONASSERT);
             };
             // update local dual objective
             localDualValue -= curAlpha * lnsCap[aIt];
         } while (++aIt!=INVALID);
 
-        //        assert(localDualValue>0);
+        OLOG("Alphastats",zeroAlpha,0,nonzAlpha);
 
-        // // flow cost setup
-        // aIt = SmartDigraph::ArcIt(lnsG);
-        // do {
-        //         // update dvar/flow mapping in trace vector by calc based on flow in outer arcs
-        //         assert(lnsIdToTraceIndex.count(lnsG.id(aIt)) > 0);
-        //         trEntry & mapEntry = trace[lnsIdToTraceIndex[lnsG.id(aIt)]];
-        //         mapEntry.lcost += static_cast<long double>(lnsFlow[aIt]) * lnsCost[aIt];
-        // } while (++aIt!=INVALID);
-
-        // OLOG("local dual val\t"+std::to_string(kmin)+"\t"+std::to_string(localDualValue),
-        //      mcfSol,
-        //      std::chrono::duration_cast<std::chrono::duration<long double>>(tg-ts).count(),
-        //      std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
-        //      );
-        OLOG("local dual val\t"+std::to_string(processedCount)+"\t"+std::to_string(localDualValue),
+        OLOG("local dual val\t"+std::to_string(0)+"\t"+std::to_string(localDualValue),
              mcfSol,
              ejectNodes.size(),
              std::chrono::duration_cast<std::chrono::duration<long double>>(tmcf-tg).count()
              );
+}
 
-        return 0;
+
+
+int main(int argc, char* argv[]) {
+
+    if (argc != 4) {
+        std::cerr << argv[0] << " traceFile cacheSize maxEjectSize" << std::endl;
+        return 1;
+    }
+
+    std::string path(argv[1]);
+    int64_t cacheSize(std::stoll(argv[2]));
+    uint64_t maxEjectSize(std::stoull(argv[3]));
+    //    std::string resultPath(argv[4]);
+
+    // parse trace file
+    std::vector<trEntry> trace;
+    OLOG("opening trace",0,0,0);
+    uint64_t totalUniqC = parseTraceFile(trace, path);
+    uint64_t totalReqc = trace.size();
+    OLOG("scanned trace",totalReqc,totalUniqC,0);
+
+    // create mcf instance
+    SmartDigraph g; // mcf graph
+    SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
+    SmartDigraph::ArcMap<long double> cost(g); // mcf costs
+    SmartDigraph::NodeMap<int64_t> supply(g); // mcf demands/supply
+    SmartDigraph::NodeMap<int64_t> traceIndex(g);
+    createMCF(g, trace, cacheSize, cap, cost, supply, traceIndex);
+    OLOG("finished g",totalReqc,totalUniqC,0);
+    
+    // dual-feasible solution: all alpha and pi are 0
+    uint64_t nodeCount = 0, arcCount = 0;
+    long double dualSol = 0;
+    SmartDigraph::NodeMap<long double> pi(g);
+    SmartDigraph::ArcMap<long double> alpha(g);
+
+    SmartDigraph::NodeIt n(g);
+    do {
+        ++nodeCount;
+        pi[n] = 0;
+        dualSol += pi[n] * supply[n];
+        //GLOG("g node",g.id(n),supply[n],0);
+    } while (++n != INVALID);
+    SmartDigraph::ArcIt a(g);
+    do {
+        ++arcCount;
+        alpha[a] = 0;
+        dualSol -= alpha[a] * cap[a];
+        //GLOG("g arc",g.id(g.source(a)),g.id(g.target(a)),cost[a]);
+    } while (++a != INVALID);
+    OLOG("finished dual init",nodeCount,arcCount,dualSol);
+
+    // max ejection size mustn't be larger than actual trace
+    if(maxEjectSize > totalReqc) {
+        maxEjectSize = totalReqc + 1;
+    }
+
+    // ordered list of utilities and check that objects have size less than cache size
+    std::multimap<double, size_t> prio;
+    for(size_t i=0; i<trace.size(); i++) {
+        auto & it = trace[i];
+        if(it.size > cacheSize) {
+            it.hasNext = false;
+        }
+        if(it.hasNext) {
+            if(it.iLen < 0) {
+                OLOG("fail",it.origTime,it.size,it.iLen);
+            }
+            assert(it.iLen>=0);
+            const double curPrio = 1.0/(it.iLen * it.size);
+            prio.insert(std::make_pair(curPrio, i));
+        }
+    }
+    
+
+    std::unordered_set<int64_t> ejectNodes;
+
+    // iterate over graph again
+    bool reachedEnd = false;
+    auto prioIt=--(prio.end());
+    uint64_t processedCount = 0;
+    SmartDigraph::Node curGNode;
+
+    while(!reachedEnd) {
+        OLOG("start",prioIt->first,prioIt->second,processedCount);
+        // LNS iteration step state
+        ejectNodes.clear();
+
+        // mark nodes for the ejection set
+        while(ejectNodes.size() <= maxEjectSize) {
+            if(--prioIt == prio.begin()) {
+                reachedEnd = true;
+                break;
+            }
+            trEntry & curEntry = trace[prioIt->second];
+            //            GLOG("lnsG",prioIt->second,curEntry.hasNext,trace.size());
+            const int64_t arcId = curEntry.innerArcId;
+            curGNode = INVALID;
+            if(curEntry.hasNext) {
+                curGNode = g.source(g.arcFromId(arcId));
+            } else if (prioIt->second>=trace.size()-1) {
+                // at end of trace we add the last node
+                curGNode = g.target(g.arcFromId(arcId));
+            }
+            // add node to lns graph
+            if(curGNode != INVALID) {
+                std::queue<int64_t> neighborNodes;
+                neighborNodes.push(g.id(curGNode));
+                for(unsigned int d=0; d<100; d++) {
+                    const int64_t curId = neighborNodes.front();
+                    curGNode = g.nodeFromId(curId);
+                    neighborNodes.pop();
+                    ejectNodes.insert(curId);
+                    SmartDigraph::InArcIt ia(g, curGNode);
+                    while(ia!=INVALID) {
+                        const int64_t newId = g.id(g.source(ia));
+                        neighborNodes.push(newId);
+                        ++ia;
+                    }
+                    SmartDigraph::OutArcIt oa(g, curGNode);
+                    while(oa!=INVALID) {
+                        const int64_t newId = g.id(g.target(oa));
+                        neighborNodes.push(newId);
+                        ++oa;
+                    }
+                }
+            }
+            if(!curEntry.processed) {
+                curEntry.processed = true;
+                processedCount++;
+            }
+            
+        }
+        if(ejectNodes.size()==0 && reachedEnd) {
+            // we're done
+            break;
+        }
+
+        solveLns(ejectNodes, g, cap, cost, supply, pi, alpha);
+
 
     }
    
