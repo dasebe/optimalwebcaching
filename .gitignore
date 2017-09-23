@@ -6,3 +6,5 @@
 *.csv
 *.result
 *.sh
+*~
+*#
