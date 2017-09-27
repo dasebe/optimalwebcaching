@@ -20,7 +20,7 @@ void parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
             const uint64_t volume = (reqc-lastSeen[idsize]) * size;
             trace[lastSeen[idsize]].volume = volume;
         }
-        trace.emplace_back(id,size,time);
+        trace.emplace_back(size);
         lastSeen[idsize]=reqc++;
     }
 }

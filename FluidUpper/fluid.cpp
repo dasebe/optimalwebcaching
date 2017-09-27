@@ -14,6 +14,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    std::cerr << "start up\n";
     std::string path(argv[1]);
     uint64_t cacheSizeMax(std::stoull(argv[2]));
     std::string resultPath(argv[3]);
@@ -22,8 +23,12 @@ int main(int argc, char* argv[]) {
     // parse trace file
     std::vector<trEntry> trace;
     parseTraceFile(trace, path);
+    std::cerr << "parsed up\n";
 
     cacheAlg(trace);
+
+    std::cerr << "sorted up\n";
+    
     printRes(trace, "fluid", cacheSizeMax, resultFile);
 
     return 0;

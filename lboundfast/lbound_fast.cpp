@@ -1,12 +1,106 @@
 #include <lemon/lgf_writer.h>
 #include <cassert>
 #include <vector>
-#include <set>
+#include <unordered_set>
 #include <map>
 #include <algorithm>
+#include <iomanip>
 #include "lib/parse_trace.h"
 
 using namespace lemon;
+
+
+const bool feasibleCacheAll(const std::vector<trEntry > & trace, const std::vector<utilEntry> & utils, const int64_t cacheSize, const double minUtil) {
+
+    // delta data structures: from localratio technique
+    int64_t curDelta;
+
+    curDelta = -cacheSize;
+    std::unordered_set<size_t> indexCached;
+
+    for(size_t i=0; i<utils.size(); i++) {
+        const utilEntry & uEntry = utils[i];
+        const trEntry & tEntry = trace[uEntry.index];
+
+        // evict: if cached no next req
+        if( ( indexCached.count(uEntry.index)>0 ) && (tEntry.nextSeen == 0) ) {
+            LOG("evict",curDelta,uEntry.index,tEntry.nextSeen);
+            curDelta -= tEntry.size;
+        }
+
+        // cache: if in utils bracket
+        if(uEntry.utility > minUtil) {
+
+            // if not cached
+            if( indexCached.count(uEntry.index) == 0) {
+                curDelta += tEntry.size;
+                LOG("admit",curDelta,uEntry.index,tEntry.nextSeen);
+            } // else: don't need update the size/width
+
+            // add index to cache
+            indexCached.insert(tEntry.nextSeen);
+
+            // exit if we exceeded cache size
+            if(curDelta > 0) {
+                LOG("overflow",curDelta,uEntry.index,tEntry.nextSeen);
+                return false;
+            }
+        }
+
+        // delete current (now outdated) entry
+        indexCached.erase(uEntry.index);
+    }
+    // all went well
+    return true;
+
+}
+
+void initRemCap(const std::vector<trEntry > & trace, const std::vector<utilEntry> & utils, const int64_t cacheSize, const double minUtil, int64_t * remcap) {
+
+    // delta data structures: from localratio technique
+    int64_t curDelta;
+
+    curDelta = -cacheSize;
+    std::unordered_set<size_t> indexCached;
+
+    for(size_t i=0; i<utils.size(); i++) {
+        const utilEntry & uEntry = utils[i];
+        const trEntry & tEntry = trace[uEntry.index];
+
+        // evict: if cached no next req
+        if( ( indexCached.count(uEntry.index)>0 ) && (tEntry.nextSeen == 0) ) {
+            LOG("evict",curDelta,uEntry.index,tEntry.nextSeen);
+            curDelta -= tEntry.size;
+        }
+
+        // cache: if in utils bracket
+        if(uEntry.utility > minUtil) {
+
+            // if not cached
+            if( indexCached.count(uEntry.index) == 0) {
+                curDelta += tEntry.size;
+                LOG("admit",curDelta,uEntry.index,tEntry.nextSeen);
+            } // else: don't need update the size/width
+
+            // add index to cache
+            indexCached.insert(tEntry.nextSeen);
+
+            // exit if we exceeded cache size
+            if(curDelta > 0) {
+                std::cerr << "OVERFLOW\n";
+                std::cout << "OVERFLOW\n";
+            }
+        }
+
+        // delete current (now outdated) entry
+        indexCached.erase(uEntry.index);
+
+        // set remaining cap
+        remcap[i] = -curDelta;
+    }
+}
+
+
 
 int main(int argc, char* argv[]) {
 
@@ -15,21 +109,21 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::cerr << "starting..\n";
+    std::cout << "starting..\n";
 
     std::string path(argv[1]);
-    int64_t cacheSize(std::stoull(argv[2]));
+    const int64_t cacheSize(std::stoull(argv[2]));
 
     // parse trace file
     std::vector<trEntry> trace;
     uint64_t uniqCount;
     uint64_t totalReqc = parseTraceFile(trace, path, cacheSize, uniqCount);
-    std::cerr << "scanned trace n=" << totalReqc << std::endl;
+    std::cout << "scanned trace n=" << totalReqc << std::endl;
 
     // ordered list of utilities and check that objects have size less than cache size
 
     std::vector<utilEntry> utils;
-    std::cerr << "reserving " <<  trace.size() - uniqCount << " " << trace.size() << " " << uniqCount << "\n";
+    std::cout << "reserving " <<  trace.size() - uniqCount << " " << trace.size() << " " << uniqCount << "\n";
     utils.reserve(trace.size() - uniqCount);
     for(size_t i=0; i<trace.size(); i++) {
         const trEntry & cur = trace[i];
@@ -42,14 +136,53 @@ int main(int argc, char* argv[]) {
         }
     }
     std::sort(utils.begin(), utils.end());
-    std::cerr << "ordered " << utils.size() << " utilities\n";
+    std::cout << "ordered " << utils.size() << " utilities\n";
 
+    // find threshold region: where some are not cacheable anymore
+    size_t lOffset = 0, hOffset = 1e5, lowestUnfeasible = 0;
+    bool foundInfeas = false;
+    while(true) {
+        std::cout << "searching thres " << lOffset << " " << utils[utils.size()-lOffset-1].utility << " " << hOffset  << " " << utils[utils.size()-hOffset].utility;
+        const bool cacheAll = feasibleCacheAll(trace, utils, cacheSize, utils[utils.size()-hOffset].utility);
+        std::cout << " - " << cacheAll  << "\n";
+        if(cacheAll) {
+            if(!foundInfeas) {
+                lOffset = hOffset;
+                hOffset *= 2;
+                if(hOffset>utils.size()) {
+                    hOffset = utils.size();
+                }
+            } else {
+                lOffset = hOffset;
+                const size_t stepSize = (lowestUnfeasible - lOffset)/2;
+                if(stepSize < 1e3) {
+                    break;
+                }
+                hOffset = lOffset + stepSize;
+            }
+        } else {
+            lowestUnfeasible = hOffset;
+            foundInfeas = true;
+            const size_t stepSize = (hOffset - lOffset)/2;
+            if(stepSize < 1e3) {
+                break;
+            }
+            hOffset = lOffset + stepSize;
+        }
+    }
+
+    //    std::cout << std::fixed << std::setprecision(20);
+    std::cout << "found thres " << lOffset << " " << utils[utils.size()-lOffset].utility << " " << hOffset  << " " << utils[utils.size()-hOffset].utility << "\n";
+
+    // create rem cap mask
     int64_t * remcap = new int64_t[trace.size()];
-    std::fill(remcap, remcap + trace.size(), cacheSize);
-    uint64_t hitc = 0, counter = 0;
+    initRemCap(trace, utils, cacheSize, utils[utils.size()-lOffset].utility, remcap);
 
-    for (auto it = utils.rbegin(); it != utils.rend(); ++it) {
-        //        std::cerr << it->utility << " " << it->index << "\n";
+    uint64_t hitc = lOffset, counter = 0;
+
+    for (auto it = utils.rbegin()+(lOffset-1); it != utils.rend(); ++it) {
+        
+
         const trEntry & cur = trace[it->index];
         bool enoughSpace = true;
         const auto s = cur.size;
@@ -67,8 +200,8 @@ int main(int argc, char* argv[]) {
             hitc++;
         }
 
-        if(counter++ > 1000000) {
-            std::cerr << "step " << hitc << "\n";
+        if(counter++ > 100000) {
+            std::cout << "lboundfast " << cacheSize << " " << hitc << " " <<  totalReqc << " " << (double)hitc/totalReqc << "\n";
             counter = 0;
         }
     }

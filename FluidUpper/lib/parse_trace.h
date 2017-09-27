@@ -17,37 +17,21 @@ inline void log_message(std::string m, double x, double y, double z, std::string
 
 // trace entry
 struct trEntry {
-    uint64_t id;
     uint64_t size;
-    uint64_t origTime;
     uint64_t volume;
     bool hasNext;
-    bool hit;
 
-    trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
-        : id(nid),
-          size(nsize),
-          origTime(ntime),
+    trEntry(uint64_t nsize)
+        : size(nsize),
           volume(std::numeric_limits<uint64_t>::max()),
-          hasNext(false),
-          hit(false)
+          hasNext(false)
     {
     };
 
     bool operator <(const trEntry &b) //const trEntry &a
     {
-        if(volume != b.volume) {
-            return volume < b.volume;
-        } else {
-            return origTime < b.origTime;
-        }
+        return volume < b.volume;
     };
-
-    bool operator ==(const trEntry &b) //const trEntry &a
-    {
-        return volume==b.volume && origTime == b.origTime;
-    };
-
 };
 
 // from boost hash combine: hashing of std::pairs for unordered_maps

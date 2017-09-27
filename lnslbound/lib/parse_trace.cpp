@@ -15,19 +15,20 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     std::unordered_map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;
 
     while(traceFile >> time >> id >> size) {
-        if(lastSeen.count(std::make_pair(id,size))>0) {
-            trace[lastSeen[std::make_pair(id,size)]].hasNext = true;
-            trace[lastSeen[std::make_pair(id,size)]].nextSeen = reqc;
-            const long double intervalLength = reqc-lastSeen[std::make_pair(id,size)];
+        const auto idSize = std::make_pair(id,size);
+        if(lastSeen.count(idSize)>0) {
+            trace[lastSeen[idSize]].hasNext = true;
+            trace[lastSeen[idSize]].nextSeen = reqc;
+            const long double intervalLength = reqc-lastSeen[idSize];
             // calculate utility
             const long double utilityDenominator = size*intervalLength;
             assert(utilityDenominator>0);
-            trace[lastSeen[std::make_pair(id,size)]].utility = 1.0L/utilityDenominator;
+            trace[lastSeen[idSize]].utility = 1.0L/utilityDenominator;
         } else {
             uniqc++;
         }
         trace.emplace_back(id,size,time);
-        lastSeen[std::make_pair(id,size)]=reqc++;
+        lastSeen[idSize]=reqc++;
     }
     return uniqc;
 }
