@@ -10,6 +10,7 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize) {
         if(cacheState.count(std::make_pair(cur->id,cur->size)) > 0) {
             // cache hit
             cur->hit = true;
+            cacheState[std::make_pair(cur->id,cur->size)] = cur;
         } else {
             // cache miss
             // admit if hasNext
