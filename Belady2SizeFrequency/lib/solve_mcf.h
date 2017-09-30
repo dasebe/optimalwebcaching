@@ -4,5 +4,5 @@
 #include <string>
 #include <iostream>
 
-void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize);
+void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSize);
 void printRes(std::vector<trEntry> & trace, std::string algName);

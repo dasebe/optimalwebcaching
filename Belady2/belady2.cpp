@@ -8,13 +8,14 @@
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 3) {
-        std::cerr << argv[0] << " traceFile cacheSize" << std::endl;
+    if (argc != 4) {
+        std::cerr << argv[0] << " traceFile cacheSize sampleSize" << std::endl;
         return 1;
     }
 
     std::string path(argv[1]);
     uint64_t cacheSize(std::stoull(argv[2]));
+    size_t sampleSize(std::stoull(argv[3]));
 
     // parse trace file
     std::vector<trEntry> trace;
@@ -35,10 +36,10 @@ int main(int argc, char* argv[]) {
     }
 
     // actual caching algorithm
-    cacheAlg(trace, cacheSize);
+    cacheAlg(trace, cacheSize, sampleSize);
 
     // print results
-    printRes(trace, "Belady2Forward "+std::to_string(cacheSize));
+    printRes(trace, "Belady2Forward "+std::to_string(cacheSize)+" "+std::to_string(sampleSize));
 
     // backward
     LOG("\n--------------------------\n\n",0,0,0);
@@ -61,10 +62,10 @@ int main(int argc, char* argv[]) {
     }
 
     // actual caching algorithm
-    cacheAlg(trace, cacheSize);
+    cacheAlg(trace, cacheSize, sampleSize);
 
     // print results
-    printRes(trace, "Belady2Backward "+std::to_string(cacheSize));
+    printRes(trace, "Belady2Backward "+std::to_string(cacheSize)+" "+std::to_string(sampleSize));
     
     return 0;
 }

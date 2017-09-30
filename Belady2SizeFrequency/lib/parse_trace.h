@@ -19,16 +19,14 @@ inline void log_message(std::string m, double x, double y, double z, std::string
 struct trEntry {
     const uint64_t id;
     const uint64_t size;
-    const uint64_t origTime;
     size_t nextSeen;
     uint64_t frequency;
     bool hasNext;
     bool hit;
 
-    trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
+    trEntry(uint64_t nid, uint64_t nsize)
         : id(nid),
           size(nsize),
-          origTime(ntime),
           nextSeen(0),
           frequency(0),
           hasNext(false),

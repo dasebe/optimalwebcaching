@@ -11,6 +11,6 @@ void parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     std::ifstream traceFile(path);
     uint64_t time, id, size;
     while(traceFile >> time >> id >> size) {
-        trace.emplace_back(id,size,time);
+        trace.emplace_back(id,size);
     }
 }
