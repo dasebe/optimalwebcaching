@@ -182,10 +182,10 @@ int main(int argc, char* argv[]) {
 
     for (auto it = utils.rbegin()+(lOffset-1); it != utils.rend(); ++it) {
         
-
         const trEntry & cur = trace[it->index];
         bool enoughSpace = true;
         const auto s = cur.size;
+
         for(size_t i = it->index; i<cur.nextSeen; i++) {
             if(remcap[i] < s) {
                 enoughSpace = false;
@@ -194,6 +194,7 @@ int main(int argc, char* argv[]) {
         }
 
         if(enoughSpace) {
+#pragma omp simd
             for(size_t i = it->index; i<cur.nextSeen; i++) {
                 remcap[i] -= s;
             }
