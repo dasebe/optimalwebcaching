@@ -3,7 +3,7 @@ OBJS += lib/parse_trace.o
 OBJS += lbound_fast.o
 
 CXX = g++
-CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
+CXXFLAGS += -std=c++11 -fopenmp #‑mveclibabi=svml #-stdlib=libc++ #non-linux
 CXXFLAGS += -MMD -MP
 CXXFLAGS += -I..
 CXXFLAGS += -O3 -ffast-math -march=native -funroll-loops -ffast-math
