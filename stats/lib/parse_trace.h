@@ -7,11 +7,15 @@
 struct trEntry {
   const uint64_t size;
   size_t nextSeen;
-  std::unordered_set<size_t> parents;
+  bool hasParent;
+  bool hasChild;
+  //  std::unordered_set<size_t> parents;
 
   trEntry(uint64_t nsize)
     : size(nsize),
-    nextSeen(0)
+    nextSeen(0),
+    hasParent(false),
+    hasChild(false)
   {
   };
 };
