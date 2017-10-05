@@ -23,7 +23,12 @@ const bool feasibleCacheAll(const std::vector<trEntry > & trace, const std::vect
         const trEntry & tEntry = trace[uEntry.index];
 
         // evict: if cached no next req
-        if( ( indexCached.count(uEntry.index)>0 ) && (tEntry.nextSeen == 0) ) {
+        if(( indexCached.count(uEntry.index)>0 ) && // cached
+           (
+            (uEntry.utility>=minUtil) || // not in util in interval
+            (tEntry.nextSeen == 0)
+            ) // no other request
+           ) {
             LOG("evict",curDelta,uEntry.index,tEntry.nextSeen);
             curDelta -= tEntry.size;
         }
@@ -67,8 +72,12 @@ void initRemCap(const std::vector<trEntry > & trace, const std::vector<utilEntry
         const utilEntry & uEntry = utils[i];
         const trEntry & tEntry = trace[uEntry.index];
 
-        // evict: if cached no next req
-        if( ( indexCached.count(uEntry.index)>0 ) && (tEntry.nextSeen == 0) ) {
+        if(( indexCached.count(uEntry.index)>0 ) && // cached
+           (
+            (uEntry.utility>=minUtil) || // not in util in interval
+            (tEntry.nextSeen == 0)
+            ) // no other request
+           ) {
             LOG("evict",curDelta,uEntry.index,tEntry.nextSeen);
             curDelta -= tEntry.size;
         }
@@ -88,7 +97,6 @@ void initRemCap(const std::vector<trEntry > & trace, const std::vector<utilEntry
             // exit if we exceeded cache size
             if(curDelta > 0) {
                 std::cerr << "OVERFLOW\n";
-                std::cout << "OVERFLOW\n";
             }
         }
 
@@ -109,7 +117,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::cout << "starting..\n";
+    std::cerr << "starting..\n";
 
     std::string path(argv[1]);
     const int64_t cacheSize(std::stoull(argv[2]));
@@ -118,12 +126,12 @@ int main(int argc, char* argv[]) {
     std::vector<trEntry> trace;
     uint64_t uniqCount;
     uint64_t totalReqc = parseTraceFile(trace, path, cacheSize, uniqCount);
-    std::cout << "scanned trace n=" << totalReqc << std::endl;
+    std::cerr << "scanned trace n=" << totalReqc << std::endl;
 
     // ordered list of utilities and check that objects have size less than cache size
 
     std::vector<utilEntry> utils;
-    std::cout << "reserving " <<  trace.size() - uniqCount << " " << trace.size() << " " << uniqCount << "\n";
+    std::cerr << "reserving " <<  trace.size() - uniqCount << " " << trace.size() << " " << uniqCount << "\n";
     utils.reserve(trace.size() - uniqCount);
     for(size_t i=0; i<trace.size(); i++) {
         const trEntry & cur = trace[i];
@@ -131,12 +139,15 @@ int main(int argc, char* argv[]) {
             // calculate utility
             const double intervalLength = cur.nextSeen - i;
             const double utilityDenominator = cur.size*intervalLength;
+            if(utilityDenominator<=0) {
+                std::cerr << "fail " << cur.size << " ns " << cur.nextSeen << " " << i << " " << utilityDenominator << " " << intervalLength << "\n";
+            }
             assert(utilityDenominator>0);
             utils.emplace_back(1.0L/utilityDenominator, i);
         }
     }
     std::sort(utils.begin(), utils.end());
-    std::cout << "ordered " << utils.size() << " utilities\n";
+    std::cerr << "ordered " << utils.size() << " utilities\n";
 
     // find threshold region: where some are not cacheable anymore
     size_t lOffset = 0, hOffset = 1e5, lowestUnfeasible = 0;

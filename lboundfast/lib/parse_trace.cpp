@@ -17,7 +17,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path,uint64_
 
     while(traceFile >> time >> id >> size) {
         const auto idSize = std::make_pair(id,size);
-        if(size <= cacheSize) {
+        if(size > 0 && size <= cacheSize) {
             lastSeen[idSize]++;
         }
         totalreqc++;
@@ -49,6 +49,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path,uint64_
         }
         // only add if object is cacheable
         if(cacheable.count(idSize)>0) {
+            assert(size>0);
             trace.emplace_back(size);
             lastSeen[idSize]=reqc++;
         }
