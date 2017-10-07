@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
     // parse trace file
     std::vector<trEntry> trace;
-    uint64_t uniqCount;
+    uint64_t uniqCount = 0;
     uint64_t totalReqc = parseTraceFile(trace, path, uniqCount);
     std::cerr << "scanned trace n=" << totalReqc << std::endl;
 
@@ -85,19 +85,22 @@ int main(int argc, char* argv[]) {
                 continue; // skip if too large to store at the moment
             }
 
+            bool cacheThis = true;
             for(size_t i = it->index; i<cur.nextSeen; i++) {
                 if(usedcap[i] + s > cs) {
+                    cacheThis = false;
                     continue;
                 }
             }
 
-            // reaching here means we space to store the object
+            if(cacheThis) {
 #pragma omp simd
-            for(size_t i = it->index; i<cur.nextSeen; i++) {
-                usedcap[i] += s;
-                noparent[i] = it->index;
+                for(size_t i = it->index; i<cur.nextSeen; i++) {
+                    usedcap[i] += s;
+                    noparent[i] = it->index;
+                }
+                cached.insert(it->index);
             }
-            cached.insert(it->index);
 
             if(counter++ > 10000) {
                 std::cerr << ".";
