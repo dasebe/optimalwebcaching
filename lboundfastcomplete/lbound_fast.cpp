@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 
     // parse trace file
     std::vector<trEntry> trace;
-    uint64_t uniqCount;
+    uint64_t uniqCount = 0;
     uint64_t totalReqc = parseTraceFile(trace, path, uniqCount);
     std::cerr << "scanned trace n=" << totalReqc << std::endl;
 
@@ -57,7 +57,8 @@ int main(int argc, char* argv[]) {
     std::unordered_set<size_t> cached;
     uint64_t counter = 0;
 
-    for(int64_t cs=1; cached.size() != trace.size(); cs = cs * 2) {
+
+    for(int64_t cs=1; cached.size() != trace.size()-uniqCount; cs = cs * 2) {
 
         // safe guard
         if(cs > std::numeric_limits<int64_t>::max()/2) {
@@ -77,24 +78,21 @@ int main(int argc, char* argv[]) {
                 continue; // skip if too large to store at the moment
             }
 
-            bool checkedAnything = false;
+            bool cacheThis = true;
             for(size_t i = it->index; i<cur.nextSeen; i++) {
-                checkedAnything = true;
                 if(usedcap[i] + s > cs) {
-                    continue; // skip
+                    cacheThis = false;
+                    break;
                 }
             }
 
-            if(!checkedAnything) {
-                std::cerr << "\n nothing checked " << it->index << " " << cur.nextSeen << std::endl;
-            }
-
-            // reaching here means we space to store the object
+            if(cacheThis) {
 #pragma omp simd
-            for(size_t i = it->index; i<cur.nextSeen; i++) {
-                usedcap[i] += s;
+                for(size_t i = it->index; i<cur.nextSeen; i++) {
+                    usedcap[i] += s;
+                }
+                cached.insert(it->index);
             }
-            cached.insert(it->index);
 
             if(counter++ > 10000) {
                 std::cerr << ".";
@@ -102,6 +100,8 @@ int main(int argc, char* argv[]) {
             }
 
         }
+
+
         std::cerr << std::endl;
         counter = 0;
         std::cout << "lboundfastc " + std::to_string(cs) + " " + std::to_string(cached.size()) + " " + std::to_string(totalReqc) +  " " + std::to_string((double)(cached.size())/totalReqc) + "\n";
