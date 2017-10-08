@@ -42,6 +42,7 @@ int main(int argc, char* argv[]) {
     // print results
     printRes(trace, "Belady2SizeForward "+std::to_string(cacheSize)+" "+std::to_string(sampleSize));
 
+
     // backward
     LOG("\n--------------------------\n\n",0,0,0);
 

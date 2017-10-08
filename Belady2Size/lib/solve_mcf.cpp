@@ -19,7 +19,7 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
         } else {
             // cache miss
             // admit if hasNext
-            if(cur->hasNext && cur->size < cacheSize) {
+            if(cur->hasNext && cur->size < cacheSize && cur->size > 0) {
                 cacheState[std::make_pair(cur->id,cur->size)] = cur;
                 cacheList.push_back(i);
                 currentSize += cur->size;
@@ -27,13 +27,18 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
                 
                 // evict if needed
                 while(currentSize > cacheSize) {
-                    LOG("eviction needed",currentSize,cacheSize,0);
-                    // sampling-based eviction
-                    std::uniform_int_distribution<size_t> distribution(0,cacheList.size()-1);
-
-                    int64_t maxDistance = -1, curDistance;
-                    size_t victimIndex = 0;
-                    for (size_t i=0; i<sampleSize; ++i) {
+                    // initialize with currently admitted
+                    int64_t curDistance;
+                    if(cur->nextSeen > i)
+                        curDistance = (cur->nextSeen - i) * cur->size;
+                    else
+                        curDistance = (i - cur->nextSeen) * cur->size;
+                    int64_t maxDistance = curDistance;
+                    size_t victimIndex = cacheList.size()-1;
+                    
+                    // sample from rest
+                    std::uniform_int_distribution<size_t> distribution(0,cacheList.size()-2);
+                    for (size_t si=0; si<sampleSize; ++si) {
                         const size_t candIndex = distribution(generator);
                         trEntry * cand = &trace[cacheList[candIndex]];
                         //LOG("cache Scan "+std::to_string(i)+" "+std::to_string(sampleSize),cand->id,cand->size,cand->nextSeen);
