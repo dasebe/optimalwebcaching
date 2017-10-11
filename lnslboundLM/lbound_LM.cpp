@@ -63,6 +63,7 @@ int main(int argc, char* argv[]) {
         
 
     long double curCost=0, curHits, overallHits = 0;
+    uint64_t integerHits = 0;
     size_t effectiveEjectSize=0;
     
     // binary search for highest k such that (k+1) unfeasible and (k) feasible to set all dvars with utility > minUtil[k] to 1
@@ -113,6 +114,7 @@ int main(int argc, char* argv[]) {
                 curCost = 0;
                 curHits = 0;
                 overallHits = 0;
+		integerHits = 0;
                 effectiveEjectSize = 0;
                 // set k to max known feasible sol
                 k=kMaxFeasible;
@@ -123,12 +125,13 @@ int main(int argc, char* argv[]) {
                         trace[i].dvar = 1;
                         curHits++;
                         overallHits++;
+			integerHits++;
                     }
                 }
                 // output iteration statistics
                 std::cout << "k " << k << " lU " << minUtil << " uU " << 1
                           << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
-                          << " oH " << overallHits << " oR " << totalReqc << "\n";
+                          << " oH " << overallHits << " oR " << totalReqc << " iH " << integerHits << "\n";
                 // we now continue with MCF
                 soFarFeasibleCacheAll = false;
             }
@@ -159,13 +162,16 @@ int main(int argc, char* argv[]) {
                 LOG("dv",it.first,trace[it.first].dvar,trace[it.first].size);
                 assert(trace[it.first].dvar >= 0 && trace[it.first].dvar<=1);
                 overallHits += trace[it.first].dvar;
+		if(trace[it.first].dvar > 0.99) {
+		  integerHits++;
+		}
             }
         }
 
         // output iteration statistics
         std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
-                  << " oH " << overallHits << " oR " << totalReqc << "\n";
+		  << " oH " << overallHits << " oR " << totalReqc << " iH " << integerHits << "\n";
     }
 
     /// final summing up
