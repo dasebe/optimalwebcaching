@@ -9,15 +9,16 @@
 
 //using namespace lemon;
 
-uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path,uint64_t cacheSize, uint64_t & uniqCount) {
+uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path, uint64_t & uniqCount) {
     std::ifstream traceFile(path);
-    uint64_t time, id, size, reqc=0, totalreqc=0;
+    uint64_t time, id, reqc=0, totalreqc=0;
+    int64_t size;
     std::unordered_map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;
     std::unordered_set<std::pair<uint64_t, uint64_t> > cacheable;
 
     while(traceFile >> time >> id >> size) {
         const auto idSize = std::make_pair(id,size);
-        if(size > 0 && size <= cacheSize) {
+        if(size > 0) {
             lastSeen[idSize]++;
         }
         totalreqc++;
@@ -41,6 +42,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path,uint64_
     while(traceFile >> time >> id >> size) {
         const auto idSize = std::make_pair(id,size);
         if(lastSeen.count(idSize)>0) {
+            assert(cacheable.count(idSize)>0); //just to be sure
             trace[lastSeen[idSize]].nextSeen = reqc;
         } else {
             if(cacheable.count(idSize)>0) {

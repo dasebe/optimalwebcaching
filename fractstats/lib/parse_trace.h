@@ -20,13 +20,11 @@ inline void log_message(std::string m, double x, double y, double z, std::string
 
 // trace entry
 struct trEntry {
-    const uint64_t id;
     const int64_t size;
     size_t nextSeen;
 
-    trEntry(uint64_t nid, uint64_t nsize)
-        : id(nid),
-          size(nsize),
+    trEntry(uint64_t nsize)
+        : size(nsize),
           nextSeen(0)
     {
     };
@@ -79,4 +77,4 @@ namespace std
 }
 
 
-uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path, uint64_t cacheSize, uint64_t & uniqCount);
+uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path, uint64_t & uniqCount);
