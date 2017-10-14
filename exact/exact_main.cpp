@@ -68,6 +68,9 @@ int main(int argc, char* argv[]) {
                                   
     }
 
+    std::cout.precision(12);
+    std::cout << std::fixed;
+
     std::cerr << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << " " << floatHits << " " << integerHits << std::endl;
     std::cout << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << " " << floatHits << " " << integerHits << std::endl;
 
