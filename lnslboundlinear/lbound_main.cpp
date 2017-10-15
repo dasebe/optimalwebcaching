@@ -31,14 +31,14 @@ int main(int argc, char* argv[]) {
 
     // LNS iteration steps
 
-    for(size_t k=0; k<trace.size(); k+=maxEjectSize) {
+    for(size_t k=0; k<trace.size(); k+=maxEjectSize/2) {
 
         // create MCF digraph with arc utilities in [minUtil,maxUtil]
         SmartDigraph g; // mcf graph
         SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
         SmartDigraph::ArcMap<double> cost(g); // mcf costs
         SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
-        const size_t effectiveEjectSize = createMCF(g, trace, cacheSize, cap, cost, supplies, k, k+maxEjectSize/2);
+        const size_t effectiveEjectSize = createMCF(g, trace, cacheSize, cap, cost, supplies, k, k+maxEjectSize);
 
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
