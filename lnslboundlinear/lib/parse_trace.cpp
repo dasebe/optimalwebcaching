@@ -64,9 +64,9 @@ uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cac
         } 
 
         // create arcs if in ejection set
-        if( (i>=minIndex && i<maxIndex) || (i < maxIndex && curEntry.nextSeen > minIndex)) {
+        if( (i>=minIndex && i<=maxIndex) || (i <= maxIndex && curEntry.nextSeen >= minIndex)) {
             // second: if there is another request for this object
-            if(curEntry.hasNext) {
+            if(curEntry.hasNext && curEntry.size < cacheSize) {
                 // save prev node as anchor for future arcs
                 prevNode = curNode;
                 lastSeen[std::make_pair(curEntry.id,curEntry.size)]=std::make_pair(i,g.id(prevNode));

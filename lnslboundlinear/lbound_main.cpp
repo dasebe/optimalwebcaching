@@ -38,11 +38,14 @@ int main(int argc, char* argv[]) {
         SmartDigraph::ArcMap<int64_t> cap(g); // mcf capacities
         SmartDigraph::ArcMap<double> cost(g); // mcf costs
         SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
+        std::cerr << "k " << k << " cMCF";
         const size_t effectiveEjectSize = createMCF(g, trace, cacheSize, cap, cost, supplies, k, k+maxEjectSize);
 
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
+        std::cerr << " sMCF";
         const long double curCost = solveMCF(g, cap, cost, supplies, flow, solverPar);
+        std::cerr << std::endl;
 
         // write DVAR to trace
         curHits = 0;
@@ -62,7 +65,7 @@ int main(int argc, char* argv[]) {
         }
 
         // output iteration statistics
-        std::cout << "k " << k << " km " << k+maxEjectSize/2 << " uU " << 0
+        std::cout << "k " << k << " km " << k+maxEjectSize << " uU " << 0
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " fH " << floatHits << " oR " << totalReqc << " iH " << integerHits << "\n";
     }
