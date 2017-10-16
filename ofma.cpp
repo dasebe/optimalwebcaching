@@ -27,13 +27,11 @@ void log_message(string m, double x, double y, double z) {
 int main (int argc, char* argv[])
 {
   // parameters
-  if(argc != 4) {
+  if(argc != 3) {
     return 1;
   }
   const char* path = argv[1];
-  uint64_t max_size(atoll(argv[2]));
-  uint64_t lineCount(atoll(argv[3]));
-  long currentLine = 0;
+  int64_t max_size(atoll(argv[2]));
 
   ifstream infile;
   infile.open(path);
@@ -43,7 +41,7 @@ int main (int argc, char* argv[])
   std::string line;
 
   unordered_map<long,long> cache;
-  long long cache_size = 0;
+  int64_t cache_size = 0;
   
   long reqs = 0, hits = 0;
   long long rbytes = 0, hbytes = 0;
@@ -123,14 +121,6 @@ int main (int argc, char* argv[])
 	    infile.seekg(len ,std::ios_base::beg);
 	  }
 	}
-
-      // process graph
-      if(++currentLine % (lineCount/25) == 0)
-	{
-	  cerr << double(currentLine)/lineCount << '\n';
-	}
-      if (currentLine > lineCount)
-	break;
     }
   infile.close();
 
