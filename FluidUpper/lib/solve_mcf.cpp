@@ -10,17 +10,26 @@ void printRes(std::vector<trEntry> & trace, std::string algName, uint64_t cacheS
     uint64_t csize = 0;
     uint64_t nextCsizePrint = 1;
     uint64_t hitc = 0;
+    uint64_t reqcDiff = 0;
     for(auto it: trace) {
-        csize += it.volume/trace.size();
         if(csize>cacheSizeMax)
             break;
-        if(it.hasNext)
-            hitc++;
-        if(csize>nextCsizePrint) {
-            *resultfile << algName << " " << csize << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << "\n";
+        if(csize>=nextCsizePrint) {
+            *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
             //            std::cout << algName << " " << csize << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << "\n";
             nextCsizePrint*=2;
+            reqcDiff=0;
+        }
+        if(it.hasNext) {
+            hitc++;
+            csize += it.volume/trace.size();
+            reqcDiff++;
         }
     }
+    while(nextCsizePrint < cacheSizeMax/2) {
+        *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
+        nextCsizePrint*=2;
+    }
+            
     resultfile->close();
 }

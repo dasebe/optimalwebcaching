@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
     std::cerr << "sorted up\n";
     
-    printRes(trace, "fluid", cacheSizeMax, resultFile);
+    printRes(trace, "fluid2", cacheSizeMax, resultFile);
 
     return 0;
 }
