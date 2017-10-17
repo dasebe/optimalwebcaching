@@ -64,6 +64,7 @@ int main(int argc, char* argv[]) {
         
 
     long double curCost=0, curHits, overallHits;
+    uint64_t integerHits = 0;
     size_t effectiveEjectSize=0;
     
     // binary search for highest k such that (k+1) unfeasible and (k) feasible to set all dvars with utility > minUtil[k] to 1
@@ -108,6 +109,7 @@ int main(int argc, char* argv[]) {
                 // set all dvars of injection (so far) to 1
                 curCost = 0;
                 curHits = 0;
+                integerHits = 0;
                 overallHits = 0;
                 effectiveEjectSize = 0;
                 // set k to max known feasible sol
@@ -120,6 +122,7 @@ int main(int argc, char* argv[]) {
                         trace[trace[i].nextSeen].hit = 1;
                         curHits++;
                         overallHits++;
+                        integerHits++;
                     }
                 }
                 // output iteration statistics
@@ -147,6 +150,7 @@ int main(int argc, char* argv[]) {
         // write DVAR to trace
         curHits = 0;
         overallHits = 0;
+        integerHits = 0;
         for(uint64_t i=0; i<trace.size(); i++) {
             if(trace[i].active) {
                 trace[i].dvar = 1.0L - flow[g.arcFromId(trace[i].arcId)]/static_cast<long double>(trace[i].size);
@@ -156,12 +160,15 @@ int main(int argc, char* argv[]) {
             LOG("dv",i,trace[i].dvar,trace[i].size);
             assert(trace[i].dvar >= 0 && trace[i].dvar<=1);
             overallHits += trace[i].dvar;
+            if(trace[i].dvar > 0.99) {
+                integerHits++;
+            }
         }
 
         // output iteration statistics
         std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
-                  << " oH " << overallHits << " oR " << totalReqc << "\n";
+                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << "\n";
     }
 
     // output decision variables and utilities
