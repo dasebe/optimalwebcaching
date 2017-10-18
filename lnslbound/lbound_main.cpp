@@ -67,74 +67,17 @@ int main(int argc, char* argv[]) {
     uint64_t integerHits = 0;
     size_t effectiveEjectSize=0;
     
-    // binary search for highest k such that (k+1) unfeasible and (k) feasible to set all dvars with utility > minUtil[k] to 1
-    size_t kMinUnFeasible = utilSteps.size()-3;
-    size_t kMaxFeasible = 0;
-    bool soFarFeasibleCacheAll = true;
-
     // LNS iteration steps
-    for(size_t k=kMaxFeasible; k+2<utilSteps.size(); k++) {
+    for(size_t k=0; k+2<utilSteps.size(); k++) {
+
         // set step's util boundaries
         const long double minUtil = utilSteps[k+2];
         const long double maxUtil = utilSteps[k];
 
-        // check if we can simply add all intervals of the current ejection set
-        if(soFarFeasibleCacheAll) {
-            soFarFeasibleCacheAll = feasibleCacheAll(trace, cacheSize, minUtil);
+        std::cerr << "k1. " << k << " lU " << minUtil << " uU " << maxUtil
+                  << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
+                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
 
-            // output iteration statistics
-            std::cout << "k " << k << " lU " << minUtil << " uU " << 1
-                      << " feas " << soFarFeasibleCacheAll << " maxfeas " << kMaxFeasible << " minunfeas " << kMinUnFeasible
-                      << " pp " << 1 << " oR " << totalReqc << "\n";
-                
-            // not feasible
-            if(!soFarFeasibleCacheAll) {
-                // update kMinUnFeasible as this was not feasible
-                if(k<kMinUnFeasible) {
-                    kMinUnFeasible = k;
-                }
-                // update k to middle of interval
-                k = kMaxFeasible + (kMinUnFeasible-kMaxFeasible)/2-1;
-                // give it another try
-                soFarFeasibleCacheAll = true;
-            } else { // feasible
-                // update kMaxFeasible as this was feasible
-                if(k>kMaxFeasible)
-                    kMaxFeasible = k;
-                // update k to middle of interval
-                k = kMaxFeasible + (kMinUnFeasible-kMaxFeasible)/2-1;
-            }
-            // last iteration
-            if(kMaxFeasible + 1 >= kMinUnFeasible) {
-                // set all dvars of injection (so far) to 1
-                curCost = 0;
-                curHits = 0;
-                integerHits = 0;
-                overallHits = 0;
-                effectiveEjectSize = 0;
-                // set k to max known feasible sol
-                k=kMaxFeasible;
-                const long double minUtil = utilSteps[k+2];
-                for(uint64_t i=0; i<trace.size(); i++) {
-                    effectiveEjectSize++;
-                    if(trace[i].utility>=minUtil && cacheSize >= trace[i].size) {
-                        trace[i].dvar = 1;
-                        trace[trace[i].nextSeen].hit = 1;
-                        curHits++;
-                        overallHits++;
-                        integerHits++;
-                    }
-                }
-                // output iteration statistics
-                std::cout << "k " << k << " lU " << minUtil << " uU " << 1
-                          << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
-                          << " oH " << overallHits << " oR " << totalReqc << "\n";
-                // we now continue with MCF
-                soFarFeasibleCacheAll = false;
-            }
-            // we can now skip the rest of this iteration
-            continue;
-        }
 
         // create MCF digraph with arc utilities in [minUtil,maxUtil]
         SmartDigraph g; // mcf graph
@@ -143,9 +86,19 @@ int main(int argc, char* argv[]) {
         SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
         effectiveEjectSize = createMCF(g, trace, cacheSize, cap, cost, supplies, minUtil, maxUtil);
 
+        std::cerr << "k2. " << k << " lU " << minUtil << " uU " << maxUtil
+                  << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
+                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
+
+
         // solve this MCF
         SmartDigraph::ArcMap<uint64_t> flow(g);
         curCost = solveMCF(g, cap, cost, supplies, flow, solverPar);
+
+        std::cerr << "k3. " << k << " lU " << minUtil << " uU " << maxUtil
+                  << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
+                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
+
 
         // write DVAR to trace
         curHits = 0;
@@ -168,7 +121,7 @@ int main(int argc, char* argv[]) {
         // output iteration statistics
         std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
-                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << "\n";
+                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
     }
 
     // output decision variables and utilities
@@ -179,7 +132,7 @@ int main(int argc, char* argv[]) {
                    << it.id << " " << it.size << " "
                    << it.utility << " "
                    << it.dvar << " "
-                   << it.hit << "\n";
+                   << it.hit << std::endl;
     }
 
 
