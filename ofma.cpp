@@ -48,6 +48,8 @@ int main (int argc, char* argv[])
 
   bool logStatistics=true; // start empty, no warmup
 
+  uint64_t counter = 0;
+
   while (infile >> t >> id >> size)
     {
       if (logStatistics)
@@ -84,7 +86,8 @@ int main (int argc, char* argv[])
 		  {
 		    for (auto it: tobefound)
 		      {
-			futureReqs[reqdist++] = get<0>(it);
+			futureReqs[reqdist] = get<0>(it);
+			// bug?:			futureReqs[reqdist++] = get<0>(it);
 			//			LOG("forloop",reqdist-1,get<0>(it),get<1>(it));
 		      }
 		    break;
@@ -121,6 +124,10 @@ int main (int argc, char* argv[])
 	    infile.seekg(len ,std::ios_base::beg);
 	  }
 	}
+      if(counter++ > 10000) {
+	cout << "OFMA " << max_size << " hitc " << hits << " reqc " << reqs << " OHR " << double(hits)/reqs << "\n";
+	counter=0;
+      }
     }
   infile.close();
 
