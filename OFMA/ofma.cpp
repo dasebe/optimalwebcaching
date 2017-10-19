@@ -124,7 +124,7 @@ int main (int argc, char* argv[])
 	    infile.seekg(len ,std::ios_base::beg);
 	  }
 	}
-      if(counter++ > 10000) {
+      if(counter++ > 1000) {
 	cout << "OFMA " << max_size << " hitc " << hits << " reqc " << reqs << " OHR " << double(hits)/reqs << "\n";
 	counter=0;
       }
