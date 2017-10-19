@@ -23,6 +23,9 @@ int main(int argc, char* argv[]) {
     uint64_t time, id, size;
     while(traceFile >> time >> id >> size) {
         const auto idSize=std::make_pair(id,size);
+        if(counts.count(idSize)==0) {
+            counts[idSize] = 0;
+        }
         counts[idSize]++;
         reqc++;
     }
@@ -38,7 +41,7 @@ int main(int argc, char* argv[]) {
     uint64_t curSize = 0;
     uint64_t hits = 0;
     for(auto it = prios.crbegin(); it != prios.crend(); it++) {
-        if(curSize + it->size > cacheSize) {
+        if(curSize + it->size >= cacheSize) {
             std::cout << cacheSize << " " << hits << " " << reqc << "\n";
             cacheSize*=2;
         }
