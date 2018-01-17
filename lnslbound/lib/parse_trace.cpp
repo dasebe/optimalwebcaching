@@ -15,15 +15,19 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     std::unordered_map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;
 
     while(traceFile >> time >> id >> size) {
+        if(reqc % 1000000 == 0) {
+            std::cerr << "parsing " << reqc << "\n";
+        }
         const auto idSize = std::make_pair(id,size);
         if(lastSeen.count(idSize)>0) {
             trace[lastSeen[idSize]].hasNext = true;
             trace[lastSeen[idSize]].nextSeen = reqc;
-            const long double intervalLength = reqc-lastSeen[idSize];
+            const double intervalLength = reqc-lastSeen[idSize];
             // calculate utility
-            const long double utilityDenominator = size*intervalLength;
+            const double utilityDenominator = size*intervalLength;
             assert(utilityDenominator>0);
             trace[lastSeen[idSize]].utility = 1.0L/utilityDenominator;
+            assert(trace[lastSeen[idSize]].utility>0);
         } else {
             uniqc++;
         }
@@ -33,7 +37,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     return uniqc;
 }
                     
-uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const long double minUtil, const long double maxUtil) {
+uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const double minUtil, const double maxUtil) {
 
     size_t effectiveEjectSize = 0;
 

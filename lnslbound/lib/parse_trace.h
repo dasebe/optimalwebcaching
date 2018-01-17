@@ -68,10 +68,10 @@ namespace std
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path);
 
-inline bool isInEjectSet(const long double minUtil, const long double maxUtil, const trEntry & curEntry) {
+inline bool isInEjectSet(const double minUtil, const double maxUtil, const trEntry & curEntry) {
     return( curEntry.utility>=minUtil && curEntry.utility<maxUtil );
 }
 
-uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const long double minUtil, const long double maxUtil);
+uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const double minUtil, const double maxUtil);
 
-bool feasibleCacheAll(std::vector<trEntry > & trace, uint64_t cacheSize, const long double minUtil);
+

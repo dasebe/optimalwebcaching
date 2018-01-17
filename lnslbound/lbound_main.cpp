@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
     std::cerr << "sorted utilities " << utilSteps2.size() << std::endl;
 
     // get utility boundaries for ejection sets (based on ejection set size)
-    std::vector<long double> utilSteps;
+    std::vector<double> utilSteps;
     utilSteps.push_back(1); // max util as start
     uint64_t curEjectSize = 0;
     LOG("ejSize",maxEjectSize,trace.size(),utilities.size());
@@ -76,8 +76,8 @@ int main(int argc, char* argv[]) {
     for(size_t k=0; k+2<utilSteps.size(); k++) {
 
         // set step's util boundaries
-        const long double minUtil = utilSteps[k+2];
-        const long double maxUtil = utilSteps[k];
+        const double minUtil = utilSteps[k+2];
+        const double maxUtil = utilSteps[k];
 
         std::cerr << "k1. " << k << " lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
