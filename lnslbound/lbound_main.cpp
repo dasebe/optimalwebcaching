@@ -2,6 +2,7 @@
 #include <cassert>
 #include <vector>
 #include <set>
+#include <algorithm>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]) {
     std::vector<trEntry> trace;
     uint64_t totalUniqC = parseTraceFile(trace, path);
     uint64_t totalReqc = trace.size();
-    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << std::endl;
+    std::cerr << "scanned trace n=" << totalReqc << " m=" << totalUniqC << " vs " << trace.size() << std::endl;
 
     // max ejection size mustn't be larger than actual trace
     if(maxEjectSize > totalReqc - totalUniqC) {
@@ -32,16 +33,20 @@ int main(int argc, char* argv[]) {
     }
     
     // ordered list of utilities and check that objects have size less than cache size
-    std::multiset<long double> utilities;
+    std::vector<double> utilSteps2;
     for(auto & it: trace) {
         if(it.size > cacheSize) {
             it.hasNext = false;
         }
         if(it.hasNext) {
             assert(it.utility>=0);
-            utilities.insert(it.utility);
+            utilSteps2.push_back(it.utility);
         }
     }
+    std::cerr << "scanned utilities " << utilSteps2.size() << std::endl;
+
+    std::sort(utilSteps2.begin(), utilSteps2.end(),std::greater<double>());
+    std::cerr << "sorted utilities " << utilSteps2.size() << std::endl;
 
     // get utility boundaries for ejection sets (based on ejection set size)
     std::vector<long double> utilSteps;
@@ -49,19 +54,19 @@ int main(int argc, char* argv[]) {
     uint64_t curEjectSize = 0;
     LOG("ejSize",maxEjectSize,trace.size(),utilities.size());
     assert(maxEjectSize>0);
-    for(auto it=--(utilities.end()); it!=utilities.begin(); it--) { //TBD last entry?
+    for(auto & it: utilSteps2) {
         curEjectSize++;
-        if(curEjectSize >= maxEjectSize/2 && (*it != *(--(utilSteps.end())) ) ) {
-            utilSteps.push_back(*it);
+        if(curEjectSize >= maxEjectSize/2 && (it != *(--(utilSteps.end())) ) ) {
+            utilSteps.push_back(it);
             //DEBUG
-            LOG("utilStep",*it,0,curEjectSize);
+            LOG("utilStep",it,0,curEjectSize);
             curEjectSize = 0;
         }
     }
     utilSteps.push_back(0); // min util as end
-    utilities.clear();
-    std::cerr << "ejection sets - #sets: " << utilSteps.size() << " |set|: " << maxEjectSize << "\n";
-        
+    utilSteps2.clear();
+    utilSteps2.shrink_to_fit();
+    std::cerr << "defined ejection sets - #sets: " << utilSteps.size() << " |set|: " << maxEjectSize << "\n";
 
     long double curCost=0, curHits, overallHits;
     uint64_t integerHits = 0;
