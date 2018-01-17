@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
     std::ofstream resultfile(resultPath);
 
     for(auto & it: trace) {
-        resultfile << it.origTime << " "
+        resultfile 
                    << it.id << " " << it.size << " "
                    << it.utility << " "
                    << it.dvar << " "

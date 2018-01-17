@@ -21,29 +21,27 @@ inline void log_message(std::string m, double x, double y, double z, std::string
 struct trEntry {
     const uint64_t id;
     const uint64_t size;
-    const uint64_t origTime;
     double dvar; //for the interval that starts here
     double hit; //for the interval that ends here
+    double utility;
     size_t nextSeen;
-    bool hasNext;
     int arcId;
-    long double utility;
-    bool active;
+    bool hasNext : 1;
+    bool active : 1;
 
-    trEntry(uint64_t nid, uint64_t nsize, uint64_t ntime)
+    trEntry(uint64_t nid, uint64_t nsize)
         : id(nid),
           size(nsize),
-          origTime(ntime),
           dvar(0),
           hit(0),
-          nextSeen(0),
-          hasNext(false),
-          arcId(-1),          
           utility(0),
+          nextSeen(0),
+          arcId(-1),          
+          hasNext(false),
           active(false)
     {
     };
-};
+}__attribute__((packed));
 
 // from boost hash combine: hashing of std::pairs for unordered_maps
 template <class T>

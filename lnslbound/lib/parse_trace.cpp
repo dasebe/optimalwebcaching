@@ -27,7 +27,7 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
         } else {
             uniqc++;
         }
-        trace.emplace_back(id,size,time);
+        trace.emplace_back(id,size);
         lastSeen[idSize]=reqc++;
     }
     return uniqc;
@@ -96,7 +96,8 @@ uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cac
             assert(cacheSize >= curEffectiveSize);
             nonFlexSize += curEffectiveSize;
             // assert valid flexsize
-            endOfIntervalSize.emplace(curEntry.nextSeen,curEffectiveSize);
+            size_t nS = curEntry.nextSeen;
+            endOfIntervalSize.emplace(nS,curEffectiveSize);
         }
 
 
