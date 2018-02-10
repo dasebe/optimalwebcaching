@@ -44,7 +44,7 @@ int main (int argc, char* argv[])
   int64_t cache_size = 0;
   
   uint64_t reqs = 0, hits = 0;
-  uint64_t uint64_t rbytes = 0, hbytes = 0;
+  uint64_t rbytes = 0, hbytes = 0;
 
   bool logStatistics=true; // start empty, no warmup
 
