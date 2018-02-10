@@ -36,15 +36,15 @@ int main (int argc, char* argv[])
   ifstream infile;
   infile.open(path);
 
-  long t, id, size;
+  uint64_t t, id, size;
 
   std::string line;
 
-  unordered_map<long,long> cache;
+  unordered_map<uint64_t,uint64_t> cache;
   int64_t cache_size = 0;
   
-  long reqs = 0, hits = 0;
-  long long rbytes = 0, hbytes = 0;
+  uint64_t reqs = 0, hits = 0;
+  uint64_t uint64_t rbytes = 0, hbytes = 0;
 
   bool logStatistics=true; // start empty, no warmup
 
@@ -75,11 +75,11 @@ int main (int argc, char* argv[])
 	  LOG("miss",id,size,cache_size);
 	  if (cache_size > max_size) {
 	    // find next requests for all
-	    map<long,long> futureReqs;
-	    unordered_map<long,long> tobefound (cache); // copy cache map
+	    map<uint64_t,uint64_t> futureReqs;
+	    unordered_map<uint64_t,uint64_t> tobefound (cache); // copy cache map
 	    // save current position
 	    int len = infile.tellg();
-	    long reqdist = 0;
+	    uint64_t reqdist = 0;
 	    while (!tobefound.empty())
 	      {
 		if (++reqdist > 100000)
@@ -95,7 +95,7 @@ int main (int argc, char* argv[])
 
 		// peak ahead and if found cached object: record how many reqdist
 		infile >> t >> id >> size;
-		unordered_map<long,long>::const_iterator got = tobefound.find (id);
+		unordered_map<uint64_t,uint64_t>::const_iterator got = tobefound.find (id);
 		if ( got != tobefound.end() )
 		  {
 		    //		    LOG("found",id,tobefound[id],cache[id]);
@@ -104,12 +104,12 @@ int main (int argc, char* argv[])
 		  }
 	      }
 	    // remove objects with requests furthest in future (highest reqdist) from cache
-	    map<long,long>::const_iterator it = futureReqs.end();
+	    map<uint64_t,uint64_t>::const_iterator it = futureReqs.end();
 	    unordered_map<int,int> classlist;
 	    while (--it != futureReqs.begin())
 	      {
-		long eid = (it)->second;
-		long esize = cache[eid];
+		uint64_t eid = (it)->second;
+		uint64_t esize = cache[eid];
 		// evict up to two object from each size class
 		if ( ++classlist[floor(log2(esize))] < 3)
 		  {
