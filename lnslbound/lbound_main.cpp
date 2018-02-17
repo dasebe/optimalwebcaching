@@ -2,6 +2,7 @@
 #include <cassert>
 #include <vector>
 #include <set>
+#include <iomanip>
 #include <algorithm>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
@@ -126,7 +127,7 @@ int main(int argc, char* argv[]) {
         // output iteration statistics
         std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
-                  << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
+                  << " oH " << std::setprecision(20) << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
     }
 
     // output decision variables and utilities
