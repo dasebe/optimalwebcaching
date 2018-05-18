@@ -43,18 +43,31 @@ int main(int argc, char* argv[]) {
     double solval = solveMCF(g, cap, cost, supplies, flow, solverPar);
     //    assert(solval>0);
 
-    std::cerr << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
-    std::cout << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << std::endl;
-
     std::ofstream resultfile(resultPath);
+
+    long double floatHits = 0;
+    uint64_t integerHits = 0;
 
     for(auto & it: trace) {
         resultfile << it.origTime << " " << it.id << " " << it.size << " ";
         if(it.arcId==-1) 
             resultfile << "0\n";
-        else
-            resultfile << (it.size-flow[g.arcFromId(it.arcId)])/static_cast<double>(it.size) << "\n";
+        else {
+            const long double dvar = (size-flow[g.arcFromId(arcId)])/static_cast<double>(size);
+            resultfile << dvar << "\n";
+            floatHits += dvar;
+            if(dvar > 0.99) {
+                integerHits++;
+            }
+        }
+                                  
     }
+
+    std::cout.precision(12);
+    std::cout << std::fixed;
+
+    std::cerr << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << " " << floatHits << " " << integerHits << std::endl;
+    std::cout << "ExLP" << solverPar << " " << cacheSize << " hitc " << totalReqc-totalUniqC-solval << " reqc " << totalReqc << " OHR " << 1.0-(static_cast<double>(solval)+totalUniqC)/totalReqc << " " << floatHits << " " << integerHits << std::endl;
 
     return 0;
 }
