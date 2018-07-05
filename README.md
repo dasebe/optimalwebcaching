@@ -1,7 +1,7 @@
 # Derive the Optimal Caching Policy for Internet and Storage Request Traces
 
 The tools in this repository allow calculating the optimal caching policy and its hit ratio for request traces where object sizes are variable.
-More information is available in the underlying paper
+More information is available in [our Sigmetrics 2018 paper](https://www.cs.cmu.edu/~dberger1/pdf/2018PracticalBound_SIGMETRICS.pdf).
 
     Practical Bounds on Optimal Caching with Variable Object Sizes
     Daniel S. Berger, Nathan Beckmann, Mor Harchol-Balter. 
@@ -18,7 +18,7 @@ More information is available in the underlying paper
 
 # External libraries
 
-This software uses the LEMON library, which is a member of the [https://www.coin-or.org/](COIN-OR) initiative.
+This software uses the LEMON library, which is a member of the [COIN-OR](https://www.coin-or.org/) initiative.
 * *Library for Efficient Modeling and Optimization in Networks*
 * Copyright 2003-2012 gervary Combinatorial Optimization Research Group, EGRES
 * Boost Software License, Version 1.0, see lemon/LICENSE
