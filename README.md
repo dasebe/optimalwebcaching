@@ -18,9 +18,12 @@ More information is available in [our Sigmetrics 2018 paper](https://www.cs.cmu.
 
 # External libraries
 
-This software uses the LEMON library, which is a member of the [COIN-OR](https://www.coin-or.org/) initiative.
-* *Library for Efficient Modeling and Optimization in Networks*
-* Copyright 2003-2012 gervary Combinatorial Optimization Research Group, EGRES
-* Boost Software License, Version 1.0, see lemon/LICENSE
-* Authors: lemon/AUTHORS
-* Website: http://lemon.cs.elte.hu/trac/lemon
+This software uses the (LEMON)[http://lemon.cs.elte.hu/trac/lemon] and (Catch2)[https://github.com/catchorg/Catch2] C++ libraries.
+
+* *LEMON: Library for Efficient Modeling and Optimization in Networks*
+  * Copyright 2003-2012 gervary Combinatorial Optimization Research Group, EGRES
+  * Boost Software License, Version 1.0, see lemon/LICENSE
+  * Authors: lemon/AUTHORS
+
+* *Catch2: C++ Automated Test Cases in a Header*
+  * Boost Software License, Version 1.0, see tests/LICENSE.txt
