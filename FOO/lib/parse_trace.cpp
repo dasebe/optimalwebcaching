@@ -7,24 +7,24 @@
 
 using namespace lemon;
 
-uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
+uint64_t parseTraceFile(std::vector<traceEntry> & trace, std::string & path) {
     std::ifstream traceFile(path);
     uint64_t time, id, size, reqc=0, uniqc=0;
     std::map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;
 
     while(traceFile >> time >> id >> size) {
         if(lastSeen.count(std::make_pair(id,size))>0) {
-            trace[lastSeen[std::make_pair(id,size)]].hasNext = true;
+            std::get<2>(trace[lastSeen[std::make_pair(id,size)]]) = true;
         } else {
             uniqc++;
         }
-        trace.emplace_back(id,size,time);
+        trace.emplace_back(id,size,false,time,-1);
         lastSeen[std::make_pair(id,size)]=reqc++;
     }
     return uniqc;
 }
                     
-void createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies) {
+void createMCF(SmartDigraph & g, std::vector<traceEntry> & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies) {
 
     // we consider (id,size) as unique identification of an object (sizes can change, but then it's a different object)
     // lastSeen maps (id,size) to (nodeId,traceIndex) of the last time this object was seen
@@ -35,10 +35,10 @@ void createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSiz
 
     // iterate over trace
     for(uint64_t i=0; i<trace.size(); i++) {
-        const trEntry thisTrEntry = trace[i];
-        const uint64_t id = thisTrEntry.id;
-        const uint64_t size = thisTrEntry.size;
-        const bool nextRequest = thisTrEntry.hasNext;
+        const traceEntry thisTrEntry = trace[i];
+        const uint64_t id=std::get<0>(thisTrEntry);
+        const uint64_t size=std::get<1>(thisTrEntry);
+        const bool nextRequest=std::get<2>(thisTrEntry);
         // first: check if previous interval ended here
         if(lastSeen.count(std::make_pair(id,size))>0) {
             // create "outer" request arc
@@ -48,7 +48,7 @@ void createMCF(SmartDigraph & g, std::vector<trEntry> & trace, uint64_t cacheSiz
             cost[curArc] = 1/static_cast <double>(size);
             supplies[lastReq] += size;
             supplies[curNode] -= size;
-            trace[lastSeen[std::make_pair(id,size)].first].arcId = g.id(curArc);
+            std::get<4>(trace[lastSeen[std::make_pair(id,size)].first]) = g.id(curArc);
         }
         // second: if there is another request for this object
         if(nextRequest) {
