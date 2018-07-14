@@ -1,7 +1,7 @@
-TARGET = lbound
+TARGET = pfoou
 OBJS += lib/parse_trace.o
 OBJS += lib/solve_mcf.o
-OBJS += lbound_main.o
+OBJS += pfoou.o
 
 CXX = g++ #clang++ #OSX
 CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
