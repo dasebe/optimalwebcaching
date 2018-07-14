@@ -1,7 +1,7 @@
-TARGET = fluidupper
+TARGET = pfool
 OBJS += lib/parse_trace.o
 OBJS += lib/solve_mcf.o
-OBJS += fluid.o
+OBJS += pfool.o
 
 CXX = g++ #clang++ #OSX
 CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
