@@ -47,7 +47,7 @@ The CLI parameters of the tools (with examples) are as follows.
 
 # External libraries
 
-This software uses the (LEMON)[http://lemon.cs.elte.hu/trac/lemon] and (Catch2)[https://github.com/catchorg/Catch2] C++ libraries.
+This software uses the [LEMON](http://lemon.cs.elte.hu/trac/lemon) and [Catch2](https://github.com/catchorg/Catch2) C++ libraries.
 
 * *LEMON: Library for Efficient Modeling and Optimization in Networks*
   * Copyright 2003-2012 gervary Combinatorial Optimization Research Group, EGRES
@@ -56,3 +56,4 @@ This software uses the (LEMON)[http://lemon.cs.elte.hu/trac/lemon] and (Catch2)[
 
 * *Catch2: C++ Automated Test Cases in a Header*
   * Boost Software License, Version 1.0, see tests/LICENSE.txt
+b
