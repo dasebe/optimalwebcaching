@@ -23,11 +23,27 @@ Traces are expected in the [webcachesim](https://github.com/dasebe/webcachesim/e
 The CLI parameters of the tools (with examples) are as follows.
 
 * FOO 
-  * format (four parameters, all required):
-    ./foo [trace name] [cachesize in bytes] [solver variant] [output name]
-  * example
-    ./foo trace.txt 1073741824 4 opt_decision_variables.txt
+  * format (four parameters, all required) and example:
 
+    ./foo [trace name] [cachesize in bytes] [pivot rule] [output name]
+    ./foo trace.txt 1073741824 4 foo_decision_variables.txt
+  
+  * pivot rule denotes the [network simplex's pivot rule](http://lemon.cs.elte.hu/pub/doc/latest/a00269.html)
+
+* PFOO-U
+  * format (four parameters, all required) and example:
+
+    ./pfoou [trace name] [cachesize in bytes] [pivot rule] [step size] [output name]
+    ./pfoou trace.txt 1073741824 4 500000 pfoo_decision_variables.txt
+    
+  * step size denotes the number of decision variables that PFOO-U changes in each iteration, 500k is a good starting point. (Lower is faster, higher has better accuracy)
+  
+* PFOO-L
+  * format (four parameters, all required) and example:
+
+    ./pfool [trace name] [cachesize in bytes] [output name]
+    ./pfoou trace.txt 1073741824 pfoo_decision_variables.txt
+    
 
 # External libraries
 
