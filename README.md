@@ -16,6 +16,19 @@ More information is available in [our Sigmetrics 2018 paper](https://www.cs.cmu.
 * LocalRatio: prior OPT approximation from the paper "A unified approach to approximating resource allocation and scheduling" [Bar-Noy, Bar-Yehuda, Freund, Naor, and Schieber. J. ACM 48 (2001)]
 * various other approximations for OPT (Belady-Size, Belady, Freq-Size)
 
+## Usage
+
+Traces are expected in the [webcachesim](https://github.com/dasebe/webcachesim/edit/master/README.md) space-separated format with three columns (time, id, size in bytes) and a separate request on each line.
+
+The CLI parameters of the tools (with examples) are as follows.
+
+* FOO 
+  * format (four parameters, all required):
+    ./foo [trace name] [cachesize in bytes] [solver variant] [output name]
+  * example
+    ./foo trace.txt 1073741824 4 opt_decision_variables.txt
+
+
 # External libraries
 
 This software uses the (LEMON)[http://lemon.cs.elte.hu/trac/lemon] and (Catch2)[https://github.com/catchorg/Catch2] C++ libraries.
