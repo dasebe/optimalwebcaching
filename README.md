@@ -45,6 +45,26 @@ The CLI parameters of the tools (with examples) are as follows.
     ./pfoou trace.txt 1073741824 pfoo_decision_variables.txt
     ``` 
 
+
+## Contributors are welcome
+
+Want to contribute? Great! We follow the [Github contribution work flow](https://help.github.com/articles/github-flow/).
+This means that submissions should fork and use a Github pull requests to get merged into this code base.
+
+This is an early-stage research prototype. There are many ways to help out.
+
+### Bug Reports
+
+If you come across a bug in webcachesim, please file a bug report by [creating a new issue](https://github.com/dasebe/webcachesim/issues/new). This is an early-stage project, which depends on your input!
+
+### Write test cases
+
+This project has not be thoroughly tested, test cases are likely to get a speedy merge.
+
+### Algorithmic contributions
+
+Both FOO and PFOO-U are much slower than they need be. See [corresponding Issue: PFOO-U is too slow](https://github.com/dasebe/optimalwebcaching/issues/1). This is fixable, but I do not have time to work on this right now.
+
 # External libraries
 
 This software uses the [LEMON](http://lemon.cs.elte.hu/trac/lemon) and [Catch2](https://github.com/catchorg/Catch2) C++ libraries.
@@ -56,4 +76,4 @@ This software uses the [LEMON](http://lemon.cs.elte.hu/trac/lemon) and [Catch2](
 
 * *Catch2: C++ Automated Test Cases in a Header*
   * Boost Software License, Version 1.0, see tests/LICENSE.txt
-b
+
