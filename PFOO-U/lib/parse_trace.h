@@ -21,6 +21,7 @@ inline void log_message(std::string m, double x, double y, double z, std::string
 struct trEntry {
     const uint64_t id;
     const uint64_t size;
+    const double cost;
     double dvar; //for the interval that starts here
     double hit; //for the interval that ends here
     double utility;
@@ -29,9 +30,10 @@ struct trEntry {
     bool hasNext : 1;
     bool active : 1;
 
-    trEntry(uint64_t nid, uint64_t nsize)
+    trEntry(uint64_t nid, uint64_t nsize, double ncost)
         : id(nid),
           size(nsize),
+          cost(ncost),
           dvar(0),
           hit(0),
           utility(0),

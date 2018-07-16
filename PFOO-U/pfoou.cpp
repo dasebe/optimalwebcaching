@@ -2,6 +2,7 @@
 #include <cassert>
 #include <vector>
 #include <set>
+#include <math.h>
 #include <iomanip>
 #include <algorithm>
 #include "lib/parse_trace.h"
@@ -54,6 +55,9 @@ int main(int argc, char* argv[]) {
     utilSteps.push_back(1); // max util as start
     uint64_t curEjectSize = 0;
     LOG("ejSize",maxEjectSize,trace.size(),utilities.size());
+    if(maxEjectSize<=0) {
+      std::cerr << "zero maxejectsize " << maxEjectSize << "\n";
+    }
     assert(maxEjectSize>0);
     for(auto & it: utilSteps2) {
         curEjectSize++;
@@ -80,7 +84,7 @@ int main(int argc, char* argv[]) {
         const double minUtil = utilSteps[k+2];
         const double maxUtil = utilSteps[k];
 
-        std::cerr << "k1. " << k << " lU " << minUtil << " uU " << maxUtil
+        std::cerr << std::setprecision(2) << 100.0*double(k)/(utilSteps.size()-2) << std::setprecision(3) << "% (1) lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
 
@@ -92,7 +96,7 @@ int main(int argc, char* argv[]) {
         SmartDigraph::NodeMap<int64_t> supplies(g); // mcf demands/supplies
         effectiveEjectSize = createMCF(g, trace, cacheSize, cap, cost, supplies, minUtil, maxUtil);
 
-        std::cerr << "k2. " << k << " lU " << minUtil << " uU " << maxUtil
+        std::cerr << std::setprecision(2) << 100.0*double(k)/(utilSteps.size()-2) << std::setprecision(3) << "% (2) lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
 
@@ -101,7 +105,7 @@ int main(int argc, char* argv[]) {
         SmartDigraph::ArcMap<uint64_t> flow(g);
         curCost = solveMCF(g, cap, cost, supplies, flow, solverPar);
 
-        std::cerr << "k3. " << k << " lU " << minUtil << " uU " << maxUtil
+        std::cerr << std::setprecision(2) << 100.0*double(k)/(utilSteps.size()-2) << std::setprecision(3) << "% (3) lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " oH " << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
 
@@ -125,7 +129,7 @@ int main(int argc, char* argv[]) {
         }
 
         // output iteration statistics
-        std::cout << "k " << k << " lU " << minUtil << " uU " << maxUtil
+        std::cerr << std::setprecision(2) << 100.0*double(k)/(utilSteps.size()-2) << std::setprecision(3) << "% (4) lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " oH " << std::setprecision(20) << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
     }
@@ -135,13 +139,15 @@ int main(int argc, char* argv[]) {
 
     for(auto & it: trace) {
         resultfile 
-                   << it.id << " " << it.size << " "
+                   << it.id << " "
+		   << it.size << " "
+		   << it.cost << " "
                    << it.utility << " "
                    << it.dvar << " "
                    << it.hit << std::endl;
     }
 
-
+    resultfile.close();
     
     return 0;
 }

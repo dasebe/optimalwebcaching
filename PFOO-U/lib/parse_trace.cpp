@@ -12,9 +12,10 @@
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     std::ifstream traceFile(path);
     uint64_t time, id, size, reqc=0, uniqc=0;
+    double cost;
     std::unordered_map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;
 
-    while(traceFile >> time >> id >> size) {
+    while(traceFile >> time >> id >> size >> cost) {
         if(reqc % 1000000 == 0) {
             std::cerr << "parsing " << reqc << "\n";
         }
@@ -26,12 +27,12 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
             // calculate utility
             const double utilityDenominator = size*intervalLength;
             assert(utilityDenominator>0);
-            trace[lastSeen[idSize]].utility = 1.0L/utilityDenominator;
+            trace[lastSeen[idSize]].utility = cost/utilityDenominator;
             assert(trace[lastSeen[idSize]].utility>0);
         } else {
             uniqc++;
         }
-        trace.emplace_back(id,size);
+        trace.emplace_back(id,size,cost);
         lastSeen[idSize]=reqc++;
     }
     return uniqc;
