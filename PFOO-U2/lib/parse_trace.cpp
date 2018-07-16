@@ -1,4 +1,4 @@
-//#include <iostream>
+#include <iostream>
 #include <fstream>
 #include <map>
 #include <cassert>
@@ -10,6 +10,9 @@
 //using namespace lemon;
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
+
+  std::cerr << "parsing\n";
+
     std::ifstream traceFile(path);
     uint64_t time, id, size, reqc=0, uniqc=0;
     double cost;
@@ -30,6 +33,8 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
 }
                     
 uint64_t createMCF(SmartDigraph & g, std::vector<trEntry > & trace, uint64_t cacheSize, SmartDigraph::ArcMap<int64_t> & cap, SmartDigraph::ArcMap<double> & cost, SmartDigraph::NodeMap<int64_t> & supplies, const size_t minIndex, const size_t maxIndex) {
+
+  std::cerr << "createmcf\n";
 
     size_t effectiveEjectSize = 0;
 
