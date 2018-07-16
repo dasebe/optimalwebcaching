@@ -5,6 +5,7 @@
 #include <math.h>
 #include <iomanip>
 #include <algorithm>
+#include <chrono>
 #include "lib/parse_trace.h"
 #include "lib/solve_mcf.h"
 
@@ -76,6 +77,8 @@ int main(int argc, char* argv[]) {
     long double curCost=0, curHits, overallHits;
     uint64_t integerHits = 0;
     size_t effectiveEjectSize=0;
+
+    auto timer_start = std::chrono::system_clock::now();
     
     // LNS iteration steps
     for(size_t k=0; k+2<utilSteps.size(); k++) {
@@ -132,11 +135,30 @@ int main(int argc, char* argv[]) {
         std::cerr << std::setprecision(2) << 100.0*double(k)/(utilSteps.size()-2) << std::setprecision(3) << "% (4) lU " << minUtil << " uU " << maxUtil
                   << " cC " << curCost << " cH " << curHits << " cR " << effectiveEjectSize
                   << " oH " << std::setprecision(20) << overallHits << " oR " << totalReqc  << " iH " << integerHits << std::endl;
+
+	auto timer_end = std::chrono::system_clock::now();
+        std::chrono::duration<double> timer_diff = timer_end-timer_start;
+	// output data every 30 minutes
+	if(timer_diff.count() > 60*30) {
+	  std::cerr << "output after timer " << timer_diff.count() << "\n";
+	  timer_start = timer_end;
+	  // output decision variables and utilities
+	  std::ofstream resultfile(resultPath);
+	  for(auto & it: trace) {
+	    resultfile 
+	      << it.id << " "
+	      << it.size << " "
+	      << it.cost << " "
+	      << it.utility << " "
+	      << it.dvar << " "
+	      << it.hit << std::endl;
+	  }
+	  resultfile.close();
+	}
     }
 
     // output decision variables and utilities
     std::ofstream resultfile(resultPath);
-
     for(auto & it: trace) {
         resultfile 
                    << it.id << " "
