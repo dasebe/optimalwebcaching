@@ -14,8 +14,20 @@ uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path) {
     uint64_t time, id, size, reqc=0, uniqc=0;
     double cost;
     std::unordered_map<std::pair<uint64_t, uint64_t>, uint64_t> lastSeen;
+    std::unordered_map<uint64_t, uint64_t> sizeConsMap;
+    uint64_t sizeConsCounter = 0;
 
     while(traceFile >> time >> id >> size >> cost) {
+        if(sizeConsMap.count(id)>0) {
+            if(size!=sizeConsMap[id] ) {
+                sizeConsCounter++;
+                std::cerr << "sI " << sizeConsCounter << "\n";
+                size = sizeConsMap[id];
+            }
+        } else {
+            sizeConsMap[id] = size;
+        }
+            
         if(reqc % 1000000 == 0) {
             std::cerr << "parsing " << reqc << "\n";
         }
