@@ -3,10 +3,21 @@
 The tools in this repository allow calculating the optimal caching policy and its hit ratio for request traces where object sizes are variable.
 More information is available in [our Sigmetrics 2018 paper](https://www.cs.cmu.edu/~dberger1/pdf/2018PracticalBound_SIGMETRICS.pdf).
 
-## Overview
+### Motivation
+
+In computer architecture, [Belady's algorithm](https://en.wikipedia.org/wiki/Page_replacement_algorithm#The_theoretically_optimal_page_replacement_algorithm) (also known as OPT or clairvoyant) gives the optimal hit ratio that can be achieved on a given trace. Clearly, this is a very useful way to benchmark the performance of caching policies.
+
+Unfortunately, when cached objects vary in their sizes (number of bytes they take up in the cache), Belady is not anymore optimal. In fact, on real-world traces, Belady can be outperformed by recent caching policies. This is a very common case, object sizes are variable in in-memory caches like memcached, CDN caches like Varnish, and in storage systems like Ceph.
+
+This repo introduces a new set of algorithms that enables the calculation of the optimal hit ratio and the optimal sequence of caching decisions for workloads with variable object sizes. Specifically, we relax the goal of computing OPT to obtaining accurate upper and lower bounds on OPT's hit ratio.
+
+### Examplary Results
+
+For variable object sizes, there are different ways of measuring a cache's performance, e.g., the object hit/miss ratio and the byte hit/miss ratio (defined below). We focus on the most common metric, the object miss ratio, and consider several online caching policies (LRU, AdaptSize, GDSF). Specifically, we compare these online policies to several bounds on the optimal cache miss ratio. We mark bounds with a U, for upper bounds, and with an L, for lower bounds.
 
 <img alt="Object Miss Ratio of Several Online and Offline Caching Policies" src="https://raw.githubusercontent.com/dasebe/optimalwebcaching/master/OHRgoal/resultfig/optimalcachingresults.png" width="480">
 
+This experiment shows that online caching policies can be much better than Belady. Furthermore, even advanced versions of Belady (Belady-Size) perform similarly to online policies, suggesting that online policies are near optimal with regard to their miss ratio. In contrast, our new bounds (PFOO-U and PFOO-L) show that there still remains a gap and work is now underway to bridge this gap.
 
 # Object Hit Ratio (OHR) & Object Miss Ratio
 
