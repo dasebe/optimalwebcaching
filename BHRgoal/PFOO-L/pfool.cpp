@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 
     // parse trace file
     std::vector<trEntry> trace;
-    uint64_t byteSum;
+    uint64_t byteSum = 0;
     parseTraceFile(trace, path,byteSum);
     std::cerr << "parsed " << byteSum << " bytes\n";
 

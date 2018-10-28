@@ -20,6 +20,7 @@ void parseTraceFile(std::vector<trEntry> & trace, std::string & path, uint64_t &
             trace[lastSeen[idsize]].volume = volume;
         }
         trace.emplace_back(size);
+        byteSum += size;
         lastSeen[idsize]=reqc++;
     }
 }
