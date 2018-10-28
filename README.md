@@ -5,7 +5,7 @@ More information is available in [our Sigmetrics 2018 paper](https://www.cs.cmu.
 
 ## Overview
 
-![Object Miss Ratio of Several Online and Offline Caching Policies](https://raw.githubusercontent.com/dasebe/optimalwebcaching/master/OHRgoal/resultfig/optimalcachingresults.png)
+![Object Miss Ratio of Several Online and Offline Caching Policies](https://raw.githubusercontent.com/dasebe/optimalwebcaching/master/OHRgoal/resultfig/optimalcachingresults.png | width=450)
 
 # Object Hit Ratio (OHR) & Object Miss Ratio
 
