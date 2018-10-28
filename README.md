@@ -26,6 +26,14 @@ This is appropriate in memory caches, where the cache's purpose is to minimize t
 
 All code for this optimization goal can be found under the directory "OHRgoal".
 
+# Public Traces for Your Experiments
+
+We release the following CDN request trace that you can use in your experiments (we ask academic works that use this trace to cite the SIGMETRICS'18 paper on the bottom of this page).
+
+ - Format: LZMA-compressed space-separated table.
+ - Three columns: request number, anonymized object-id, object size in bytes
+ - [Download link](http://dat-berger.de/cachetraces/sigmetrics18/cdn1_500m_sigmetrics18.tr.lzma)
+
 ## Offline Algorithms
 
 * Flow Offline Optimum (FOO): asymptotically exact derivation of optimal caching (OPT)
