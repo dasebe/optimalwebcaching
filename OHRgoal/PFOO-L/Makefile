@@ -6,7 +6,7 @@ OBJS += pfool.o
 CXX = g++ #clang++ #OSX
 CXXFLAGS += -std=c++11 #-stdlib=libc++ #non-linux
 CXXFLAGS += -MMD -MP # dependency tracking flags
-CXXFLAGS += -I..
+CXXFLAGS += -I.. -I ../../lib
 CXXFLAGS += -O3 -ffast-math -march=native -funroll-loops -ffast-math
 CXXFLAGS += -Wall -Werror 
 LDFLAGS += $(LIBS)

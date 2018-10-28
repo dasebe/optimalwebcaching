@@ -1,6 +1,7 @@
 #include <vector>
 #include <string>
 #include <lemon/smart_graph.h>
+#include <misc/hash_combine.h>
 
 using namespace lemon;
 
@@ -43,27 +44,6 @@ struct trEntry {
     };
 }__attribute__((packed));
 
-// from boost hash combine: hashing of std::pairs for unordered_maps
-template <class T>
-inline void hash_combine(std::size_t & seed, const T & v)
-{
-  std::hash<T> hasher;
-  seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-}
-
-namespace std
-{
-  template<typename S, typename T> struct hash<pair<S, T>>
-  {
-    inline size_t operator()(const pair<S, T> & v) const
-    {
-      size_t seed = 0;
-      ::hash_combine(seed, v.first);
-      ::hash_combine(seed, v.second);
-      return seed;
-    }
-  };
-}
 
 
 uint64_t parseTraceFile(std::vector<trEntry> & trace, std::string & path);
