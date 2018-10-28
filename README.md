@@ -19,20 +19,20 @@ For variable object sizes, there are different ways of measuring a cache's perfo
 
 This experiment shows that online caching policies can be much better than Belady. Furthermore, even advanced versions of Belady (Belady-Size) perform similarly to online policies, suggesting that online policies are near optimal with regard to their miss ratio. In contrast, our new bounds (PFOO-U and PFOO-L) show that there still remains a gap and work is now underway to bridge this gap.
 
-# Object Hit Ratio (OHR) & Object Miss Ratio
-
-For the object hit/miss ratio optimization goal, every object counts the same (i.e., a hit for a large 1GB object and hit for a smal 10B object will both count as a "hit").
-This is appropriate in memory caches, where the cache's purpose is to minimize the number of I/O operations (random seeks) going to secondary storage.
-
-All code for this optimization goal can be found under the directory "OHRgoal".
-
-# Public Traces for Your Experiments
+### Public Traces for Your Experiments
 
 We release the following CDN request trace that you can use in your experiments (we ask academic works that use this trace to cite the SIGMETRICS'18 paper on the bottom of this page).
 
  - Format: LZMA-compressed space-separated table.
  - Three columns: request number, anonymized object-id, object size in bytes
  - [Download link](http://dat-berger.de/cachetraces/sigmetrics18/cdn1_500m_sigmetrics18.tr.lzma)
+
+# Object Hit Ratio (OHR) & Object Miss Ratio
+
+For the object hit/miss ratio optimization goal, every object counts the same (i.e., a hit for a large 1GB object and hit for a smal 10B object will both count as a "hit").
+This is appropriate in memory caches, where the cache's purpose is to minimize the number of I/O operations (random seeks) going to secondary storage.
+
+All code for this optimization goal can be found under the directory "OHRgoal".
 
 ## Offline Algorithms
 
@@ -44,7 +44,7 @@ We release the following CDN request trace that you can use in your experiments 
 
 ## Usage
 
-Traces are expected in the [webcachesim](https://github.com/dasebe/webcachesim/edit/master/README.md) space-separated format with three columns (time, id, size in bytes) and a separate request on each line.
+Traces are expected in the [webcachesim](https://github.com/dasebe/webcachesim/edit/master/README.md) space-separated format with three columns (time, id, size in bytes) and a separate request on each line. See the download link above for an example.
 
 The CLI parameters of some of the tools (with examples) are as follows.
 
