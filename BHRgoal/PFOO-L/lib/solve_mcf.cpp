@@ -3,10 +3,12 @@
 #include <fstream>
 #include <algorithm>
 
+// sort by volume (sorting function implemented in struct
 void cacheAlg(std::vector<trEntry> & trace) {
     std::sort(trace.begin(), trace.end());
 }
 
+// calculate and print results
 void printRes(std::vector<trEntry> & trace, uint64_t & byteSum, uint64_t cacheSize) {
     uint64_t totalCacheVolume = cacheSize * trace.size();
     uint64_t currentVolume = 0;

@@ -80,5 +80,5 @@ void printRes(std::vector<trEntry> & trace) {
     }
     LOG("tr",it.id,it.nextSeen,it.hit);
   }
-  std::cout << "PFOO-L ohr " << double(hitc)/trace.size() << " bhr " << double(bytehitc)/byteSum << "\n";
+  std::cout << "Belady ohr " << double(hitc)/trace.size() << " bhr " << double(bytehitc)/byteSum << "\n";
 }
