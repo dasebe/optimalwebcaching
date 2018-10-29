@@ -76,8 +76,41 @@ The CLI parameters of some of the tools (with examples) are as follows.
 For the byte hit/miss ratio optimization goal, every object is weighted in proportion to the number of bytes (e.g., a hit to a 4KB object is 4x more important that a hit to a 1KB object).
 This is appropriate in disk/flash caches (e.g., CDNs), where each miss incurs a bandwidth cost (which is linear in the number of missed bytes).
 
-All code for this optimization goal will be found under the directory "BHRgoal".
+All code for this optimization goal is in the directory "BHRgoal".
 
+## Offline Algorithms
+
+* Practical FOO Lower (PFOO-L): lower bound on the byte miss ratio, i.e., upper bound on the BHR that any online policy can achieve
+* Practical FOO Upper (PFOO-U): (currently still being ported)
+* Belady: as above
+
+## Usage
+
+Traces are expected in the [webcachesim](https://github.com/dasebe/webcachesim/edit/master/README.md) space-separated format with three columns (time, id, size in bytes) and a separate request on each line. See the download link above for an example.
+
+Makefiles are in each directory, they have been tested with g++ version 7 and above.
+
+The CLI parameters are as follows.
+
+* PFOO-L
+  * input: two parameters (trace path and cache size)
+  * output (to cout): OHR and BHR
+  * example:
+    ```
+    ./BHRgoal/PFOO-L/pfool [trace name] [cachesize in bytes]
+    ./BHRgoal/PFOO-L/pfool trace.txt 1073741824
+    ``` 
+ * PFOO-U
+   * to be ported from OHR
+  
+ * Belady
+   * input: three parameters (trace path, cache size, and sampling size)
+   * output (to cout): OHR and BHR
+   * example:
+    ```
+    ./BHRgoal/Belady/belady2 [trace name] [cachesize in bytes] [samples]
+    ./BHRgoal/Belady/belady2 trace.txt 1073741824 100
+    ``` 
 
 # Contributors are welcome
 
