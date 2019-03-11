@@ -24,7 +24,7 @@ struct trEntry {
     size_t nextSeen;
     bool hasNext;
     double hit;
-    double cachedFract;
+    uint64_t cachedBytes; // could be a fraction of size
 
     trEntry(uint64_t nid, uint64_t nsize)
         : id(nid),
@@ -32,7 +32,7 @@ struct trEntry {
           nextSeen(0),
           hasNext(false),
           hit(0.0),
-          cachedFract(0.0)
+          cachedBytes(0.0)
     {
     };
 };

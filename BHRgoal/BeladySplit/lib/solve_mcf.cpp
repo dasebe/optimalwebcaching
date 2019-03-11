@@ -13,9 +13,31 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
         trEntry *cur = &trace[i];
         // check in cache
         if(cacheState.count(std::make_pair(cur->id,cur->size)) > 0) {
-            // cache hit
-            cur->hit = cacheState[std::make_pair(cur->id,cur->size)]->cachedFract;
-            cur->cachedFract = cacheState[std::make_pair(cur->id,cur->size)]->cachedFract;
+            // cache hit is fraction of bytes cached
+            const auto oSize =cacheState[std::make_pair(cur->id,cur->size)]->size;
+            const auto oCached = cacheState[std::make_pair(cur->id,cur->size)]->cachedBytes;
+            if(oCached > oSize) {
+                std::cerr << "PANIC " << oSize << " oC " << oCached << "\n";
+            }
+            cur->hit = oCached/double(oSize);
+            cur->cachedBytes = oCached;
+            // could increase cache fraction?
+            if(currentSize < cacheSize && oSize > oCached) {
+                // can increase fraction
+                // std::cerr << "before hit : curCS " << currentSize << " CS " << cacheSize << " oS " << oSize << " oC " << oCached << "\n";
+                if(cacheSize - currentSize > oSize - oCached) {
+                    // cache full object
+                    cur->cachedBytes = oSize;
+                    currentSize += oSize - oCached;
+                } else {
+                    // increase fraction
+                    cur->cachedBytes += cacheSize - currentSize;
+                    currentSize = cacheSize;
+                }
+                // std::cerr << "after hit : curCS " << currentSize << " CS " << cacheSize << " oS " << oSize << " oC " << cur->cachedBytes << "\n";
+            }
+
+            // update to next object
             cacheState[std::make_pair(cur->id,cur->size)] = cur;
         } else {
             // cache miss
@@ -23,6 +45,7 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
             if(cur->hasNext && cur->size < cacheSize && cur->size > 0) {
                 // admit full object
                 cacheState[std::make_pair(cur->id,cur->size)] = cur;
+                cur->cachedBytes = cur->size;
                 cacheList.push_back(i);
                 currentSize += cur->size;
                 LOG("admitted",cur->id,cur->size,currentSize);
@@ -56,8 +79,8 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
                     }
                     trEntry * evictVictim = &trace[cacheList[victimIndex]];
                     LOG("vict",maxDistance,evictVictim->id,evictVictim->size);
-                    // evict only fraction if that's sufficient
-                    if(currentSize - cacheSize >= (evictVictim->size * evictVictim->cachedFract)) {
+                    // evict a fraction if that's sufficient
+                    if(currentSize - cacheSize >= evictVictim->cachedBytes) {
                         // evict full object
                         if(victimIndex != cacheList.size()-1) {
                             cacheList[victimIndex] = cacheList[cacheList.size()-1];
@@ -69,8 +92,11 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
                         cacheState.erase(std::make_pair(evictVictim->id, evictVictim->size));
                         currentSize -= evictVictim->size;
                     } else {
+                        //std::cerr << "before evict : curCS " << currentSize << " CS " << cacheSize << " oS " << evictVictim->size << " oC " << evictVictim->cachedBytes << "\n";
                         // evict partial object
-                        evictVictim->cachedFract -= (currentSize - cacheSize)/evictVictim->size;
+                        evictVictim->cachedBytes -= currentSize - cacheSize;
+                        currentSize = cacheSize;
+                        //std::cerr << "after evict : curCS " << currentSize << " CS " << cacheSize << " oS " << evictVictim->size << " oC " << evictVictim->cachedBytes << "\n";
                     }
                 }
             }
@@ -80,14 +106,14 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
 
 // just print out hit ratios
 void printRes(std::vector<trEntry> & trace) {
-    uint64_t hitc = 0, bytehitc = 0, byteSum = 0;
+    double hitc = 0, bytehitc = 0, byteSum = 0;
     for(auto & it: trace) {
         byteSum += it.size;
-        if(it.hit) {
-            hitc++;
-            bytehitc += it.size;
-        }
+
+        // only count fraction
+        hitc+=it.hit;
+        bytehitc += it.hit * double(it.size);
         LOG("tr",it.id,it.nextSeen,it.hit);
     }
-    std::cout << "Belady ohr " << double(hitc)/trace.size() << " bhr " << double(bytehitc)/byteSum << "\n";
+    std::cout << "BeladySplit ohr " << double(hitc)/trace.size() << " bhr " << double(bytehitc)/byteSum << "\n";
 }
