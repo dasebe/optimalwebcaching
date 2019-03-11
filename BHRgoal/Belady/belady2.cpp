@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     cacheAlg(trace, cacheSize, sampleSize);
 
     // print results
-    printRes(trace);
+    printRes(trace, path, cacheSize);
     
     return 0;
 }

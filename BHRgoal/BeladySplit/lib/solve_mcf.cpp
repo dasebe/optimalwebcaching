@@ -105,7 +105,7 @@ void cacheAlg(std::vector<trEntry> & trace, uint64_t cacheSize, size_t sampleSiz
 }
 
 // just print out hit ratios
-void printRes(std::vector<trEntry> & trace) {
+void printRes(std::vector<trEntry> & trace, std::string & path, uint64_t cacheSize) {
     double hitc = 0, bytehitc = 0, byteSum = 0;
     for(auto & it: trace) {
         byteSum += it.size;
@@ -115,5 +115,5 @@ void printRes(std::vector<trEntry> & trace) {
         bytehitc += it.hit * double(it.size);
         LOG("tr",it.id,it.nextSeen,it.hit);
     }
-    std::cout << "BeladySplit ohr " << double(hitc)/trace.size() << " bhr " << double(bytehitc)/byteSum << "\n";
+    std::cout << "BeladySplit tr " << path << " cs " << cacheSize << " ohr " << double(hitc)/trace.size() << " bhr " << double(bytehitc)/byteSum << "\n";
 }
