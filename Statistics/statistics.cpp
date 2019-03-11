@@ -40,37 +40,39 @@ int main(int argc, char* argv[]) {
         reqcounter[std::make_pair(cur.id, cur.size)]++;
     }
 
+    // overall reuse distance
     std::map<double, uint64_t> rddist;
     for(size_t i=0; i<trace.size(); i++) {
         auto ns = trace[i].nextSeen;
         if(ns==0) {
             rddist[-1.0]++;
         } else {
-            rddist[std::round(std::log10(ns-i)*10.0)/10.0]++;
+            rddist[std::round(std::log10(ns-i)*100.0)/100.0]++;
         }
     }
 
     for(auto it:rddist) {
-        std::cout << "rd " << it.first << " " << it.second << "\n";
+        std::cout << "rd 0 " << it.first << " " << it.second << "\n";
     }
 
+    // overall popularity
     std::map<double, uint64_t> popdist;
     std::map<double, uint64_t> sizedist;
     for(auto it:reqcounter) {
-        popdist[std::round(std::log10(it.second)*10.0)/10.0]++;
-        sizedist[std::round(std::log10(std::get<1>(it.first))*10.0)/10.0]+=it.second;
+        popdist[std::round(std::log10(it.second)*100.0)/100.0]++;
+        sizedist[std::round(std::log10(std::get<1>(it.first))*100.0)/100.0]+=it.second;
     }
 
     for(auto it:popdist) {
-        std::cout << "pop " << it.first << " " << it.second << "\n";
+        std::cout << "pop 0 " << it.first << " " << it.second << "\n";
     }
         
     for(auto it:sizedist) {
-        std::cout << "size " << it.first << " " << it.second << "\n";
+        std::cout << "size 0 " << it.first << " " << it.second << "\n";
     }
 
     for(auto it:uniqsizedist) {
-        std::cout << "uniqsize " << it.first << " " << it.second << "\n";
+        std::cout << "uniqsize 0 " << it.first << " " << it.second << "\n";
     }
 
 
@@ -82,7 +84,7 @@ int main(int argc, char* argv[]) {
     size_t pos=1, printpos=1;
     for(auto it=zipfdist.crbegin();it!=zipfdist.crend();it++){
         if(pos==printpos) {
-            std::cout << "zipf " << pos << " " << *it << "\n";
+            std::cout << "zipf 0 " << pos << " " << *it << "\n";
             printpos*=2;
         }
         pos++;
