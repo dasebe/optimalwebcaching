@@ -17,7 +17,7 @@ void printRes(std::vector<trEntry> & trace, std::string algName, uint64_t cacheS
     *resultfile << std::fixed << std::setprecision(1);
     // iterate over sorted trace
     for(auto it: trace) {
-        if(csize > lcacheSizeMax)
+        if(nextCsizePrint > lcacheSizeMax)
             break;
         if(csize>=nextCsizePrint) {
             *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
