@@ -13,8 +13,9 @@ void printRes(std::vector<trEntry> & trace, std::string algName, uint64_t cacheS
     long double ltraceSize = trace.size();
     uint64_t hitc = 0;
     uint64_t reqcDiff = 0;
+    // iterate over sorted trace
     for(auto it: trace) {
-        if(csize> lcacheSizeMax)
+        if(csize > lcacheSizeMax)
             break;
         if(csize>=nextCsizePrint) {
             *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
@@ -22,13 +23,17 @@ void printRes(std::vector<trEntry> & trace, std::string algName, uint64_t cacheS
             nextCsizePrint*=2;
             reqcDiff=0;
         }
+        // add up hits and used-up "fluid" cache size
         if(it.hasNext) {
             hitc++;
             csize += it.volume/ltraceSize;
             reqcDiff++;
         }
     }
+    // fill in the gaps (if the cache fits the whole trace)
+    // keep outputting the last hit count (as trace is too short)
     while(nextCsizePrint < lcacheSizeMax/2) {
+        std::cerr << "filling in gaps, trace too short\n";
         *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
         nextCsizePrint*=2;
     }
