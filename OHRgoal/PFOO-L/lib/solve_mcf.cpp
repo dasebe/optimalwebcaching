@@ -21,7 +21,6 @@ void printRes(std::vector<trEntry> & trace, std::string algName, uint64_t cacheS
             break;
         if(csize>=nextCsizePrint) {
             *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
-            //            std::cout << algName << " " << csize << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << "\n";
             nextCsizePrint*=2;
             reqcDiff=0;
         }
