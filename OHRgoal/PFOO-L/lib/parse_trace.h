@@ -35,4 +35,4 @@ struct trEntry {
     };
 };
 
-void parseTraceFile(std::vector<trEntry> & trace, std::string & path);
+void parseTraceFile(std::vector<trEntry> & trace, std::string & path, uint64_t warmup);
