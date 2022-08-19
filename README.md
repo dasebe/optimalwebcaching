@@ -25,7 +25,7 @@ We release the following CDN request trace that you can use in your experiments 
 
  - Format: LZMA-compressed space-separated table.
  - Three columns: request number, anonymized object-id, object size in bytes
- - [Download link](http://dat-berger.de/cachetraces/sigmetrics18/cdn1_500m_sigmetrics18.tr.lzma)
+ - See [New trace links](https://github.com/sunnyszy/lrb#traces)
 
 # Object Hit Ratio (OHR) & Object Miss Ratio
 
