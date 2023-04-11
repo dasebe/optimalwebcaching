@@ -9,8 +9,8 @@
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 4) {
-        std::cerr << argv[0] << " traceFile cacheSizeMax resultPath" << std::endl;
+    if (argc != 5) {
+        std::cerr << argv[0] << " traceFile cacheSizeMax resultPath warmup" << std::endl;
         return 1;
     }
 
@@ -18,11 +18,12 @@ int main(int argc, char* argv[]) {
     std::string path(argv[1]);
     uint64_t cacheSizeMax(std::stoull(argv[2]));
     std::string resultPath(argv[3]);
+    uint64_t warmup(std::stoull(argv[4]));
     std::ofstream * resultFile = new std::ofstream(resultPath);
 
     // parse trace file
     std::vector<trEntry> trace;
-    parseTraceFile(trace, path);
+    parseTraceFile(trace, path, warmup);
     std::cerr << "parsed up\n";
 
     cacheAlg(trace);

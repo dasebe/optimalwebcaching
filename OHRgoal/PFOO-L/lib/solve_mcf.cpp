@@ -33,7 +33,7 @@ void printRes(std::vector<trEntry> & trace, std::string algName, uint64_t cacheS
     }
     // fill in the gaps (if the cache fits the whole trace)
     // keep outputting the last hit count (as trace is too short)
-    while(nextCsizePrint < lcacheSizeMax) {
+    while(nextCsizePrint <= lcacheSizeMax) {
         std::cerr << "filling in gaps, trace too short\n";
         *resultfile << algName << " " << nextCsizePrint << " " << hitc << " " << trace.size() << " " << (double)hitc/trace.size() << " " << csize << " " << reqcDiff << "\n";
         nextCsizePrint*=2;
